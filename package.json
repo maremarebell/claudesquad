@@ -1,0 +1,19 @@
+{
+  "name": "claude-squad",
+  "version": "1.0.0",
+  "description": "Claude Squad — home, calendar, and crew profiles",
+  "scripts": {
+    "build": "eleventy",
+    "dev": "eleventy --serve",
+    "start": "eleventy --serve"
+  },
+  "keywords": [
+    "eleventy",
+    "static-site"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@11ty/eleventy": "^2.0.1"
+  }
+}

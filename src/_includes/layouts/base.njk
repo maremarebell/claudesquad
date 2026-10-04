@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if title %}{{ title }} - {% elif name %}{{ name }} - {% endif %}Claude Squad</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="page">
+  <header class="header">
+    <div class="header__container">
+      <a href="/" class="header__brand">
+        <img src="/images/logo.jpg" alt="Claude Squad" class="header__logo-img">
+        <span class="header__logo-text">Claude Squad</span>
+      </a>
+      <nav class="nav">
+        <ul class="nav__list">
+          <li class="nav__item">
+            <a href="/calendar" class="nav__link">Calendar</a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    {{ content | safe }}
+  </main>
+
+  <footer class="footer">
+    <div class="footer__container">
+      <p class="footer__text">Make No Mistakes.</p>
+      <p class="footer__text footer__text--muted">&copy; 2026 Claude Squad</p>
+    </div>
+  </footer>
+</body>
+</html>

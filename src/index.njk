@@ -1,0 +1,36 @@
+---
+layout: base.njk
+title: Home
+---
+
+<div class="hero">
+  <img src="/images/logo.jpg" alt="Claude Squad — Make No Mistakes" class="hero__logo">
+</div>
+
+<div class="content">
+  <h1>Welcome to Claude Squad</h1>
+  <p>This is home base. Check the <a href="/calendar">calendar</a> for what's coming up, and scroll down for photos from past events.</p>
+</div>
+
+<div class="gallery">
+  <h2 class="gallery__title">Gallery</h2>
+  {% set photos = collections.photo | reverse %}
+  {% if photos.length %}
+    <div class="gallery__grid">
+      {% for photo in photos %}
+        <figure class="gallery__item">
+          <img src="{{ photo.data.image }}" alt="{{ photo.data.caption or photo.data.event or 'Claude Squad photo' }}" class="gallery__image" loading="lazy">
+          {% if photo.data.caption or photo.data.event or photo.data.date %}
+            <figcaption class="gallery__caption">
+              {% if photo.data.event %}<span class="gallery__event">{{ photo.data.event }}</span>{% endif %}
+              {% if photo.data.caption %}<span class="gallery__caption-text">{{ photo.data.caption }}</span>{% endif %}
+              {% if photo.data.date %}<span class="gallery__date">{{ photo.data.date }}</span>{% endif %}
+            </figcaption>
+          {% endif %}
+        </figure>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="gallery__empty">No photos yet — be the first to add one. See <code>CONTRIBUTING.md</code> in this repo for how to open a PR.</p>
+  {% endif %}
+</div>

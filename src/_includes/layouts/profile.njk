@@ -1,0 +1,20 @@
+---
+layout: base.njk
+---
+
+<div class="profile">
+  {% if photo %}
+    <img src="{{ photo }}" alt="{{ name }}" class="profile__photo">
+  {% else %}
+    <div class="profile__photo profile__photo--placeholder" aria-hidden="true"></div>
+  {% endif %}
+
+  <h1 class="profile__name page-title">{{ name }}</h1>
+  {% if role %}
+    <p class="profile__role page-subtitle">{{ role }}</p>
+  {% endif %}
+
+  <div class="profile__bio">
+    {{ content | safe }}
+  </div>
+</div>
