@@ -1,5 +1,26 @@
 # Contributing to Claude Squad
 
+## Add or edit a meetup
+
+All meetups live in one file: `src/_data/events.json`. Add an entry (or edit one):
+
+```json
+{
+  "date": "2026-11-14",
+  "title": "Name of the meetup",
+  "emoji": "🏋️",
+  "partiful": "https://partiful.com/e/xxxxx"
+}
+```
+
+- `date` — `YYYY-MM-DD`.
+- `title` — shown in the calendar tooltip and, if it's the next upcoming one, in the homepage banner.
+- `emoji` — optional, shown on the calendar day.
+- `color` — optional CSS color for the day's background; defaults to the site accent.
+- `partiful` — the RSVP link. If you don't have one yet, set it to `null` — the day will still show on the calendar (click it to see the title) and the homepage banner will tell people to check the WhatsApp group instead.
+
+The calendar and the homepage banner both read straight from this file — no other files need to change.
+
 ## Add your profile
 
 1. Add a photo (optional) to `src/images/profiles/your-name.jpg`.

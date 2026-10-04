@@ -3,6 +3,21 @@ layout: base.njk
 title: Home
 ---
 
+{% if nextEvent %}
+  <div class="banner">
+    <div class="banner__inner">
+      <span class="banner__label">Next Meetup</span>
+      <span class="banner__title">{{ nextEvent.title }}</span>
+      <span class="banner__date">{{ nextEvent.dateLabel }}</span>
+      {% if nextEvent.partiful %}
+        <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="banner__link">RSVP on Partiful →</a>
+      {% else %}
+        <span class="banner__fallback">Partiful coming soon — follow the WhatsApp group for details</span>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
 <div class="hero">
   <img src="/images/logo.jpg" alt="Claude Squad — Make No Mistakes" class="hero__logo">
 </div>
