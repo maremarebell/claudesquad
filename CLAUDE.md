@@ -40,3 +40,7 @@ npm run build   # outputs to _site/
 - Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
 - Git: local repo only, no GitHub remote configured yet.
+
+## TODO
+
+- Figure out the actual contribution model: current docs (`CONTRIBUTING.md`) assume standalone git/PR workflow, but we still need a real way for people to collaboratively edit the site together live, in person, during a Claude Squad workout session (not everyone will have a dev setup ready to go) — needs more thought.
