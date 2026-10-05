@@ -1,7 +1,37 @@
 [
   {
-    "date": "2026-10-24",
-    "title": "Next Meetup (placeholder — edit me!)",
+    "date": "2026-10-15",
+    "title": "Claude Squad Meetup",
+    "emoji": "🏋️",
+    "partiful": null
+  },
+  {
+    "date": "2026-10-29",
+    "title": "Claude Squad Meetup",
+    "emoji": "🏋️",
+    "partiful": null
+  },
+  {
+    "date": "2026-11-12",
+    "title": "Claude Squad Meetup",
+    "emoji": "🏋️",
+    "partiful": null
+  },
+  {
+    "date": "2026-12-03",
+    "title": "Claude Squad Meetup",
+    "emoji": "🏋️",
+    "partiful": null
+  },
+  {
+    "date": "2026-12-17",
+    "title": "Claude Squad Meetup",
+    "emoji": "🏋️",
+    "partiful": null
+  },
+  {
+    "date": "2026-12-31",
+    "title": "Claude Squad Meetup",
     "emoji": "🏋️",
     "partiful": null
   }
