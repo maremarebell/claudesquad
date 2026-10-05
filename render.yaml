@@ -1,0 +1,18 @@
+# Render Blueprint: the site as a free static site with HTTPS (phones only
+# allow shaking and location over HTTPS). Render runs the 11ty build on every
+# push to the connected branch and serves _site.
+services:
+  - type: web
+    name: claudesquad
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./_site
+    pullRequestPreviewsEnabled: true
+    headers:
+      # the service worker must never be cached, or a fix to it never lands
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
