@@ -89,7 +89,7 @@ mark {
     mark {
       animation: swipe linear both;
       animation-timeline: view();
-      animation-range: entry 40% cover 35%;
+      animation-range: entry 30% entry 100%;
     }
   }
 }
@@ -240,8 +240,10 @@ mark {
 }
 
 .nav__link {
-  display: inline-block;
-  padding: var(--space-3xs) var(--space-2xs);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-2xs);
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 700;
@@ -285,8 +287,18 @@ mark {
 
 @media (max-width: 480px) {
   .nav__link {
-    padding: var(--space-3xs) var(--space-3xs);
+    padding: 0 var(--space-3xs);
     font-size: 11px;
+  }
+
+  /* one line of topbar on a phone instead of two */
+  .topbar {
+    padding: var(--space-2xs) var(--space-lg);
+    background-size: 20px 100%, 20px 100%, auto;
+  }
+
+  .topbar__text {
+    display: none;
   }
 
   .nav__link::before,
@@ -513,8 +525,10 @@ h2 {
 }
 
 @media (max-width: 760px) {
+  /* header and topbar take ~130px; the meetup panel has to clear the fold */
   .hero {
-    min-height: 640px;
+    height: min(calc(100svh - 130px), 680px);
+    min-height: 520px;
   }
 
   .hero__hud {
@@ -928,6 +942,7 @@ h2 {
   border-top: 1px solid var(--rule);
 }
 
+.content > h1,
 .content > h2,
 .gallery > h2 {
   grid-column: 1;
@@ -940,7 +955,7 @@ h2 {
   border: 0;
 }
 
-.content > *:not(h2),
+.content > *:not(h1, h2),
 .gallery > *:not(h2) {
   grid-column: 2;
 }
@@ -979,6 +994,7 @@ h2 {
     padding: var(--space-xl) var(--gutter);
   }
 
+  .content > h1,
   .content > h2,
   .gallery > h2 {
     position: static;
@@ -986,7 +1002,7 @@ h2 {
     margin-bottom: var(--space-md);
   }
 
-  .content > *:not(h2),
+  .content > *:not(h1, h2),
   .gallery > *:not(h2) {
     grid-column: 1;
   }
@@ -1400,6 +1416,20 @@ h2 {
   z-index: var(--z-tooltip);
   font-family: var(--mono);
   pointer-events: none;
+}
+
+/* edge columns: pin the tooltip to the day's own edge so it stays on screen */
+.calendar__table td:nth-child(-n+2) .calendar__day--event::after,
+.calendar__table td:nth-child(-n+2) .calendar__event-tooltip-click {
+  left: 0;
+  transform: none;
+}
+
+.calendar__table td:nth-child(n+6) .calendar__day--event::after,
+.calendar__table td:nth-child(n+6) .calendar__event-tooltip-click {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 .calendar__event-tooltip-click::after {
