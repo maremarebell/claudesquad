@@ -10,8 +10,6 @@ npm run dev     # eleventy --serve (live reload)
 npm run build   # outputs to _site/
 ```
 
-There's no fixed dev port in package.json; this session has been running it on `--port=8098` manually (`npx eleventy --serve --port=8098`) since the default port kept colliding with another local 11ty project (`fractalu`).
-
 ## Structure
 
 - `src/index.njk` — homepage: next-meetup banner, hero logo, intro copy, photo gallery (sorted by date, newest first)
