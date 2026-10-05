@@ -15,8 +15,8 @@ function eventTooltip(event) {
     : `${event.title} — Partiful TBA, ask in the WhatsApp group`;
 }
 
-// Builds a rolling 12-month grid (this month through +11 months), stretched
-// to also cover any event date that falls outside that window.
+// Builds a grid for just the current quarter (3 months: Jan-Mar, Apr-Jun,
+// Jul-Sep, or Oct-Dec, whichever contains today).
 module.exports = function() {
   const today = new Date();
   const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
@@ -29,15 +29,9 @@ module.exports = function() {
     eventsByDate[e.date].push(augmented);
   });
 
-  let startMonth = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth(), 1));
-  let endMonth = new Date(Date.UTC(todayUTC.getUTCFullYear(), todayUTC.getUTCMonth() + 11, 1));
-
-  events.forEach(e => {
-    const [y, m] = e.date.split("-").map(Number);
-    const eventMonth = new Date(Date.UTC(y, m - 1, 1));
-    if (eventMonth < startMonth) startMonth = eventMonth;
-    if (eventMonth > endMonth) endMonth = eventMonth;
-  });
+  const quarterStartMonth = Math.floor(todayUTC.getUTCMonth() / 3) * 3;
+  const startMonth = new Date(Date.UTC(todayUTC.getUTCFullYear(), quarterStartMonth, 1));
+  const endMonth = new Date(Date.UTC(todayUTC.getUTCFullYear(), quarterStartMonth + 2, 1));
 
   const months = [];
   let cursor = new Date(startMonth);
