@@ -12,7 +12,7 @@ title: Home
       {% if nextEvent.partiful %}
         <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="banner__link">RSVP on Partiful →</a>
       {% else %}
-        <span class="banner__fallback">Partiful coming soon — follow the WhatsApp group for details</span>
+        <span class="banner__fallback">Partiful coming soon — follow the <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener" class="banner__link">WhatsApp group</a> for details</span>
       {% endif %}
     </div>
   </div>
