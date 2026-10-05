@@ -41,4 +41,3 @@ There's no fixed dev port in package.json; this session has been running it on `
 - No profile index page exists on purpose — profiles are direct-URL only (`/slug/`), per the original request.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
 - Git: local repo only, no GitHub remote configured yet.
-- Two files sit untracked in the project root (`d76cfede-....JPG`, `logomark.jpg`) — these are the original chat-attachment drops; working copies already live in `src/images/`, so they're intentionally left out of git rather than cleaned up unprompted.
