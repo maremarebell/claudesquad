@@ -6,13 +6,13 @@ title: Home
 {% if nextEvent %}
   <div class="banner">
     <div class="banner__inner">
-      <span class="banner__label">Next Meetup</span>
+      <span class="banner__label">Next Meetup: </span>
       <span class="banner__title">{{ nextEvent.title }}</span>
       <span class="banner__date">{{ nextEvent.dateLabel }}</span>
       {% if nextEvent.partiful %}
-        <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="banner__link">RSVP on Partiful →</a>
+        <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="banner__link">RSVP on Partiful</a>
       {% else %}
-        <span class="banner__fallback">Partiful coming soon — follow the <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener" class="banner__link">WhatsApp group</a> for details</span>
+        <span class="banner__fallback">Partiful link coming soon, join the <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener" class="banner__link">WhatsApp group</a> for details</span>
       {% endif %}
     </div>
   </div>
@@ -23,12 +23,17 @@ title: Home
 </div>
 
 <div class="content">
-  <h1>Welcome to Claude Squad</h1>
-  <p>This is home base. Check the <a href="/calendar">calendar</a> for what's coming up, and scroll down for photos from past events.</p>
+  <h2>CLAUDE SQUAD!</h2>
+  <p>Welcome to NYC's most elite fitness and computing club. We set PRs while we push PRs.
+  We burn tokens while we burn calories. We MAKE NO MISTAKES.</p>
+  <p>More specifically, we meet up ~every other week to prompt, lift, and friendshipmog everyone else in the area
+  in matching tanks. When the weather is nice, we meet outside for calisthenics, otherwise we meet at the weights in Vital.</p>
+  <p>Everyone is welcome, whatever your skill level with working out and/or AI. It's all
+  better with a squad.</p>
 </div>
 
 <div class="gallery">
-  <h2 class="gallery__title">Photos</h2>
+  <h2>Photos</h2>
   {% set photos = collections.photo | reverse %}
   {% if photos.length %}
     <div class="gallery__grid">
