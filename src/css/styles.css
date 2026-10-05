@@ -22,7 +22,7 @@
 }
 
 body {
-  font-family: 'DM Mono', monospace;
+  font-family: 'Open Sans', sans-serif;
   line-height: 1.7;
   color: var(--ink);
   background-color: var(--site-bg);
@@ -436,7 +436,7 @@ h2 {
 
 .footer__text--muted {
   margin-top: 8px;
-  font-family: 'DM Mono', monospace;
+  font-family: 'Open Sans', sans-serif;
   color: var(--ink-muted);
   font-size: 11px;
 }
@@ -447,7 +447,7 @@ h2 {
    ============================================================ */
 .calendar {
   background: var(--site-bg);
-  font-family: 'DM Mono', monospace;
+  font-family: 'Open Sans', sans-serif;
   color: var(--ink);
   padding: 32px var(--page-padding-x);
   min-height: calc(100vh - 200px);
@@ -608,7 +608,7 @@ h2 {
   transition: opacity 0.2s;
   margin-bottom: 5px;
   z-index: 1000;
-  font-family: 'DM Mono', monospace;
+  font-family: 'Open Sans', sans-serif;
 }
 
 .calendar__day--event::before {
@@ -644,7 +644,7 @@ h2 {
   white-space: nowrap;
   margin-bottom: 5px;
   z-index: 1000;
-  font-family: 'DM Mono', monospace;
+  font-family: 'Open Sans', sans-serif;
   pointer-events: none;
 }
 
