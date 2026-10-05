@@ -12,7 +12,9 @@ npm run build   # outputs to _site/
 
 ## Structure
 
-- `src/index.njk` — homepage: next-meetup banner, hero logo, intro copy, photo gallery (sorted by date, newest first)
+- `src/index.njk` — homepage: 3D hero (`src/js/hero.js`, raw three.js from an importmap) with the next meetup overlaid, intro copy, photo gallery (sorted by date, newest first). Without WebGL the flat `logo.jpg` shows instead.
+- `src/here.njk` + `src/js/here.js` — `/here/`, login + check-in: GitHub sign-in through Supabase, shake to check in (vibrate on Android, switch-checkbox haptic on iOS), 10 points per check-in on an `events.json` date, unlocks an "Add your profile" GitHub link after the first one. Schema and RLS in `supabase/schema.sql`, setup in README.
+- `src/manifest.webmanifest` + `src/sw.js` — PWA, starts at `/here/`. The worker is network-first and same-origin only.
 - `src/calendar.njk` — calendar page, entirely data-driven (see below)
 - `src/members.njk` — `/members/` index, lists everyone in the `profile` collection (photo, name, role) linking to their page
 - `src/profiles/*.md` — one file per person; filename *is* the URL slug (`mare-co-captain.md` → `/members/mare-co-captain/`). Shared front matter/layout comes from `src/profiles/profiles.json` (11ty directory data file: `layout: profile.njk`, `tags: profile`, `permalink: /members/{{ page.fileSlug }}/`)
@@ -23,10 +25,10 @@ npm run build   # outputs to _site/
 
 ### `src/_data/` (11ty global data)
 
-- `site.json` — `{ whatsappLink }`. Currently always set to a real invite link; there's no "link missing" fallback anywhere anymore (it was removed on purpose — see git log "Remove the no-link fallback for the WhatsApp button"). If this ever needs to go back to being optional, that pattern would need re-adding in `base.njk`.
+- `site.json` — `{ whatsappLink, repo, supabaseUrl, supabaseAnonKey }`. Empty Supabase values make `/here/` say it isn't connected. Currently always set to a real invite link; there's no "link missing" fallback anywhere anymore (it was removed on purpose — see git log "Remove the no-link fallback for the WhatsApp button"). If this ever needs to go back to being optional, that pattern would need re-adding in `base.njk`.
 - `events.json` — the single source of truth for all meetups. Each entry: `date` (`YYYY-MM-DD`), `title`, `emoji` (optional), `color` (optional, defaults to `var(--accent)`), `partiful` (URL or `null`). This is the file to edit when meetups are added/changed — nothing else needs touching.
 - `calendarMonths.js` — computes the calendar grid *from* `events.json`. Key behavior: it only renders 3-month blocks for quarters that actually contain an event (sorted chronologically), **not** a rolling window based on today's date. The next quarter only appears once an event is added to it — this was an explicit user request, don't "fix" it back to date-based rolling. Falls back to today's quarter if `events.json` is ever empty. Also flags `isPast` per month (fully-elapsed months) for the gray-out/mobile-hide behavior in CSS.
-- `nextEvent.js` — soonest event on/after today, used by the homepage banner. Returns `null` if nothing upcoming (banner just doesn't render).
+- `nextEvent.js` — soonest event on/after today, used by the homepage hero. Returns `null` if nothing upcoming (the meetup block just doesn't render).
 
 ## Design system
 
@@ -39,7 +41,7 @@ npm run build   # outputs to _site/
 
 - Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
-- Git: local repo only, no GitHub remote configured yet.
+- Git: remote is github.com/maremarebell/claudesquad. Not deployed anywhere yet.
 
 ## TODO
 

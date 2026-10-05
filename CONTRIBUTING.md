@@ -14,14 +14,16 @@ All meetups live in one file: `src/_data/events.json`. Add an entry (or edit one
 ```
 
 - `date` — `YYYY-MM-DD`.
-- `title` — shown in the calendar tooltip and, if it's the next upcoming one, in the homepage banner.
+- `title` — shown in the calendar tooltip and, if it's the next upcoming one, in the homepage hero.
 - `emoji` — optional, shown on the calendar day.
 - `color` — optional CSS color for the day's background; defaults to the site accent.
-- `partiful` — the RSVP link. If you don't have one yet, set it to `null` — the day will still show on the calendar (click it to see the title) and the homepage banner will tell people to check the WhatsApp group instead.
+- `partiful` — the RSVP link. If you don't have one yet, set it to `null` — the day will still show on the calendar (click it to see the title) and the homepage hero will tell people to check the WhatsApp group instead.
 
-The calendar and the homepage banner both read straight from this file — no other files need to change.
+The calendar and the homepage hero both read straight from this file — no other files need to change.
 
 ## Add your profile
+
+Quickest way: log in at `/here/`, check in at a meetup, then hit "Add your profile". It opens GitHub with the file already started. Or by hand:
 
 1. Add a photo (optional) to `src/images/profiles/your-name.jpg`.
 2. Create `src/profiles/your-slug.md` (the filename becomes the URL, e.g. `your-slug.md` → `/members/your-slug/`). You'll also show up automatically on the `/members` list.

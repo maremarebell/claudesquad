@@ -193,67 +193,6 @@ h2 {
   }
 }
 
-/* Banner (homepage next-meetup notice) */
-.banner {
-  display: flex;
-  justify-content: center;
-  padding: 24px var(--page-padding-x) 0;
-}
-
-.banner__inner {
-  max-width: 640px;
-  width: 100%;
-  background: rgba(217, 131, 95, 0.1);
-  border: 1.5px solid var(--accent);
-  border-radius: 4px;
-  margin: 0 auto;
-  padding: 14px 20px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: baseline;
-  gap: 6px 14px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--ink);
-}
-
-.banner__label {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--accent);
-}
-
-.banner__title {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.banner__date {
-  color: var(--ink-muted);
-}
-
-.banner__link {
-  color: var(--accent);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.banner__fallback {
-  font-style: italic;
-  color: var(--ink-muted);
-}
-
-@media (max-width: 600px) {
-  .banner__inner {
-    flex-direction: column;
-    gap: 4px;
-  }
-}
-
 /* Hero (homepage logo) */
 .hero {
   width: 100%;
@@ -267,6 +206,338 @@ h2 {
   max-width: 420px;
   width: 100%;
   height: auto;
+}
+
+/* Without WebGL the flat logo shows and the overlay sits under it as plain blocks */
+.hero {
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero__overlay {
+  width: 100%;
+  max-width: 1200px;
+  display: grid;
+  gap: 24px;
+  padding: 24px 0;
+}
+
+.hero__title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(28px, 5vw, 56px);
+  line-height: 1.15;
+  color: var(--ink);
+  /* graded like Altitude: bright at the top, fading down */
+  background: linear-gradient(180deg, var(--ink) 30%, rgba(243, 236, 228, 0.35));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero__meetup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 300px;
+  font-size: 14px;
+}
+
+.hero__label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hero__event {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.hero__date,
+.hero__note {
+  color: var(--ink-muted);
+}
+
+.hero__note a {
+  font-weight: 600;
+}
+
+/* Lumea's underlined field: a bare rule with an arrow at the end */
+.hero__cta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(243, 236, 228, 0.5);
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.hero__cta:hover,
+.hero__cta:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.hero__tagline {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+}
+
+/* hero.js sets data-three once the 3D scene has rendered a frame */
+.hero[data-three] {
+  position: relative;
+  height: min(88vh, 820px);
+  min-height: 560px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.hero[data-three] .hero__logo {
+  display: none;
+}
+
+.hero__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hero[data-three] .hero__overlay {
+  position: relative;
+  height: 100%;
+  padding: 48px var(--page-padding-x) 32px;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr auto;
+  pointer-events: none;
+}
+
+.hero[data-three] .hero__overlay a {
+  pointer-events: auto;
+}
+
+.hero[data-three] .hero__title {
+  align-self: center;
+}
+
+.hero[data-three] .hero__meetup {
+  align-self: center;
+  justify-self: end;
+}
+
+.hero[data-three] .hero__tagline {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+  .hero[data-three] .hero__overlay {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto auto;
+    padding-top: 28px;
+  }
+
+  .hero[data-three] .hero__title {
+    align-self: start;
+  }
+
+  .hero[data-three] .hero__meetup {
+    grid-row: 3;
+    justify-self: stretch;
+    max-width: none;
+  }
+
+  .hero[data-three] .hero__tagline {
+    grid-row: 4;
+  }
+}
+
+/* Altitude's hairlines, running the full page height */
+.page::before,
+.page::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 6%;
+  width: 1px;
+  background: rgba(243, 236, 228, 0.07);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.page::after {
+  left: auto;
+  right: 6%;
+}
+
+/* sections rise in as they scroll into view, where the browser supports it */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .content,
+    .gallery__item {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(40px); }
+}
+
+/* Check-in page */
+.here {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 40px var(--page-padding-x);
+  text-align: center;
+}
+
+.here h2 {
+  margin: 40px 0 16px;
+}
+
+.here__status {
+  min-height: 1.7em;
+  margin: 16px 0 24px;
+  color: var(--ink-muted);
+}
+
+.here__who {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.here__btn {
+  display: inline-block;
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1a1410;
+  font: 600 16px 'Open Sans', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.here__btn:focus-visible,
+.here__link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.here__btn--bump {
+  width: 200px;
+  height: 200px;
+  margin: 32px 0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  hyphens: manual;
+  box-shadow: 0 0 0 0 rgba(217, 131, 95, 0.6);
+}
+
+.here--armed .here__btn--bump {
+  animation: here-pulse 1.4s ease-out infinite;
+}
+
+@keyframes here-pulse {
+  to { box-shadow: 0 0 0 36px rgba(217, 131, 95, 0); }
+}
+
+.here__link {
+  background: none;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.here__score {
+  margin: 32px 0 0;
+}
+
+.here__points {
+  display: block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 48px;
+  color: var(--accent);
+}
+
+.here--bumped .here__points {
+  animation: here-pop 0.5s ease-out;
+}
+
+@keyframes here-pop {
+  50% { transform: scale(1.25); }
+}
+
+.here__label {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.here__faces {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.here__face {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+}
+
+.here__board {
+  list-style: none;
+  text-align: left;
+}
+
+.here__board li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.here__board .here__face {
+  width: 32px;
+  height: 32px;
+  border-width: 1px;
+}
+
+.here__board span {
+  flex: 1;
+}
+
+.here__haptic {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .here--armed .here__btn--bump,
+  .here--bumped .here__points {
+    animation: none;
+  }
 }
 
 /* Content Pages */

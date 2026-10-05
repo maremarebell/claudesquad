@@ -1,0 +1,51 @@
+---
+layout: base.njk
+title: Log in
+permalink: /here/
+---
+
+<div class="here" id="here">
+  <h1 class="page-title" id="here-title">Log in</h1>
+  <p class="here__status" id="here-status" role="status">Loading…</p>
+
+  <div id="here-signin" hidden>
+    <button class="here__btn" id="here-signin-btn" type="button">Sign in with GitHub</button>
+  </div>
+
+  <div id="here-app" hidden>
+    <p class="here__who">Signed in as <b id="here-name"></b> · <button class="here__link" id="here-signout" type="button">Sign out</button></p>
+
+    <div id="here-bump" hidden>
+      <button class="here__btn here__btn--bump" id="here-bump-btn" type="button">Friendship&shy;mog</button>
+    </div>
+
+    <div class="here__score">
+      <span class="here__points" id="here-points">0</span>
+      <span class="here__label">points · <span id="here-meetups">0 meetups</span></span>
+    </div>
+
+    <section id="here-present" hidden>
+      <h2>Here today</h2>
+      <div class="here__faces" id="here-faces"></div>
+    </section>
+
+    <section>
+      <h2>Leaderboard</h2>
+      <ol class="here__board" id="here-board"></ol>
+    </section>
+
+    <section>
+      <h2>Edit the site</h2>
+      <p id="here-locked">Check in at a meetup to unlock this.</p>
+      <div id="here-unlocked" hidden>
+        <p><a class="here__btn" id="here-profile-link" target="_blank" rel="noopener">Add your profile</a></p>
+        <p><a href="{{ site.repo }}" target="_blank" rel="noopener">The repo</a> · <a href="{{ site.repo }}/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">How to contribute</a></p>
+      </div>
+    </section>
+  </div>
+
+  <label class="here__haptic" aria-hidden="true"><input type="checkbox" switch id="haptic" tabindex="-1"></label>
+</div>
+
+<script type="application/json" id="here-config">{{ { supabaseUrl: site.supabaseUrl, supabaseAnonKey: site.supabaseAnonKey, repo: site.repo, events: events } | dump | safe }}</script>
+<script type="module" src="/js/here.js"></script>

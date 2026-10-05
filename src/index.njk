@@ -3,24 +3,34 @@ layout: base.njk
 title: Home
 ---
 
-{% if nextEvent %}
-  <div class="banner">
-    <div class="banner__inner">
-      <span class="banner__label">Next Meetup: </span>
-      <span class="banner__title">{{ nextEvent.title }}</span>
-      <span class="banner__date">{{ nextEvent.dateLabel }}</span>
-      {% if nextEvent.partiful %}
-        <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="banner__link">RSVP on Partiful</a>
-      {% else %}
-        <span class="banner__fallback">Partiful link coming soon, join the <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener" class="banner__link">WhatsApp group</a> for details</span>
-      {% endif %}
-    </div>
-  </div>
-{% endif %}
-
 <div class="hero">
-  <img src="/images/logo.jpg" alt="Claude Squad — Make No Mistakes" class="hero__logo">
+  <img src="/images/logo.jpg" alt="Claude Squad, Make No Mistakes" class="hero__logo">
+
+  <div class="hero__overlay">
+    <h1 class="hero__title">Claude<br>Squad</h1>
+
+    {% if nextEvent %}
+      <div class="hero__meetup">
+        <span class="hero__label">Next Meetup</span>
+        <span class="hero__event">{{ nextEvent.title }}</span>
+        <span class="hero__date">{{ nextEvent.dateLabel }}</span>
+        {% if nextEvent.partiful %}
+          <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="hero__cta">RSVP on Partiful <span aria-hidden="true">→</span></a>
+        {% else %}
+          <span class="hero__note">Partiful link coming soon, join the <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener">WhatsApp group</a> for details</span>
+        {% endif %}
+        <a href="/here/" class="hero__cta">Check in <span aria-hidden="true">→</span></a>
+      </div>
+    {% endif %}
+
+    <p class="hero__tagline">Make No Mistakes.</p>
+  </div>
 </div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.180.0/build/three.module.js" } }
+</script>
+<script type="module" src="/js/hero.js"></script>
 
 <div class="content">
   <h2>What is Claude Squad?</h2>

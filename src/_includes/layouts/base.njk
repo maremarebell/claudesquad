@@ -8,6 +8,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon/favicon-16x16.png">
   <link rel="apple-touch-icon" href="/images/favicon/apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
@@ -20,6 +24,9 @@
       </a>
       <nav class="nav">
         <ul class="nav__list">
+          <li class="nav__item">
+            <a href="/here/" class="nav__link">Log in</a>
+          </li>
           <li class="nav__item">
             <a href="/calendar" class="nav__link">Calendar</a>
           </li>
@@ -48,5 +55,8 @@
       <p class="footer__text footer__text--muted">&copy; 2026 Claude Squad</p>
     </div>
   </footer>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+  </script>
 </body>
 </html>
