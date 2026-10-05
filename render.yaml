@@ -1,6 +1,8 @@
-# Render Blueprint: the site as a free static site with HTTPS (phones only
-# allow shaking and location over HTTPS). Render runs the 11ty build on every
-# push to the connected branch and serves _site.
+# Render: the site as a free static site with HTTPS (phones only allow
+# shaking and location over HTTPS), live at https://claudesquad.onrender.com.
+# That service was made in the Render dashboard from the public repo URL with
+# these same settings and headers; Render only reads this file if the repo is
+# connected as a Blueprint, so change both together.
 services:
   - type: web
     name: claudesquad
@@ -13,6 +15,7 @@ services:
       - path: /sw.js
         name: Cache-Control
         value: no-cache
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
+      # Render serves .webmanifest as octet-stream otherwise
+      - path: /manifest.webmanifest
+        name: Content-Type
+        value: application/manifest+json

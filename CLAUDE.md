@@ -48,7 +48,8 @@ npm run build   # outputs to _site/
 
 - Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
-- Git: remote is github.com/maremarebell/claudesquad. Not deployed anywhere yet.
+- Git: remote is github.com/maremarebell/claudesquad.
+- Deploy: Render static site, https://claudesquad.onrender.com, building `claudesquad-3d-attendance` (switch it to `main` in Render settings once the PR merges). Render has no access to the repo (it's maremarebell's), so pushes do NOT auto-deploy: use Manual Deploy in the dashboard, or have maremarebell install the Render GitHub app. Settings and headers mirror `render.yaml`.
 
 ## TODO
 

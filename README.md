@@ -26,9 +26,13 @@ The matching happens in the database (`public.bump()` in `supabase/migrations/`)
    ```
 
    It creates the `claudesquad` project, applies the migrations, and writes the URL and anon key into `src/_data/site.json`. It prints the GitHub OAuth app values for step 2.
-2. Make that GitHub OAuth app at https://github.com/settings/applications/new, then run the same command again with `GITHUB_CLIENT_ID=... GITHUB_SECRET=...` in front. Add `SITE_URL=https://...` once the site is deployed.
+2. Make that GitHub OAuth app at https://github.com/settings/applications/new, then run the same command again with `GITHUB_CLIENT_ID=... GITHUB_SECRET=...` in front. Sign-in returns to https://claudesquad.onrender.com/here/ (and `localhost:8080` for dev); `SITE_URL=...` changes that.
 
-Until then `/here/` says "Check-in isn't open yet." Shaking and location need HTTPS, so phones need the deployed site; a laptop on `localhost` works for sign-in.
+Until then `/here/` says "Check-in isn't open yet."
+
+### Hosting
+
+Render static site at https://claudesquad.onrender.com (settings in `render.yaml`). Phones need it: shaking and location only work over HTTPS. Render can't see pushes to this repo yet, so deploy with Manual Deploy in the Render dashboard until the Render GitHub app is installed on the repo.
 
 ### Testing locally
 

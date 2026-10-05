@@ -9,8 +9,8 @@
 // run prints the callback URL that app needs. Safe to re-run.
 //
 // SITE_URL is where sign-in returns to. Set it once the site is deployed; a
-// later run without it keeps whatever the project already has (or localhost
-// on the very first run). Redirect URLs are only ever added, never dropped.
+// later run without it keeps whatever the project already has (or the Render
+// site on the very first run). Redirect URLs are only ever added, never dropped.
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
@@ -65,7 +65,7 @@ for (const file of readdirSync('supabase/migrations').sort()) {
 
 const current = await api('GET', `/projects/${ref}/config/auth`);
 const keep = current.site_url && !/^http:\/\/(localhost|127\.0\.0\.1)(:3000)?\/?$/.test(current.site_url) ? current.site_url : null;
-const siteUrl = (process.env.SITE_URL || keep || 'http://localhost:8080').replace(/\/$/, '');
+const siteUrl = (process.env.SITE_URL || keep || 'https://claudesquad.onrender.com').replace(/\/$/, '');
 const allow = new Set((current.uri_allow_list || '').split(',').filter(Boolean));
 allow.add(`${siteUrl}/here/`);
 allow.add('http://localhost:8080/here/');
