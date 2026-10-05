@@ -385,7 +385,7 @@ h1 {
 .calendar {
   background: var(--site-bg);
   font-family: 'DM Mono', monospace;
-  color: #1a1410;
+  color: var(--ink);
   padding: 32px var(--page-padding-x);
   min-height: calc(100vh - 200px);
 }
@@ -414,13 +414,13 @@ h1 {
 }
 
 .calendar__month-block {
-  background: #faf7f2;
-  border: 1px solid #d4c9b8;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
 }
 
 .calendar__month-header {
   padding: 10px 13px;
-  border-bottom: 1px solid #d4c9b8;
+  border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -429,12 +429,12 @@ h1 {
 .calendar__month-name {
   font-family: 'Press Start 2P', monospace;
   font-size: 13px;
-  color: #1a1410;
+  color: var(--ink);
 }
 
 .calendar__month-year {
   font-size: 10px;
-  color: #8c7b6e;
+  color: var(--ink-muted);
   letter-spacing: 1.6px;
 }
 
@@ -457,10 +457,10 @@ h1 {
   font-size: 10px;
   letter-spacing: 1.28px;
   text-transform: uppercase;
-  color: #8c7b6e;
+  color: var(--ink-muted);
   padding: 6px 0;
   text-align: center;
-  border-bottom: 1px solid #d4c9b8;
+  border-bottom: 1px solid var(--border);
 }
 
 .calendar__day {
@@ -472,12 +472,12 @@ h1 {
   justify-content: center;
   padding: 2px;
   font-size: 12px;
-  color: #1a1410;
+  color: var(--ink);
   text-decoration: none;
   cursor: default;
   transition: all 100ms;
   position: relative;
-  border: 1px solid #fff;
+  border: 1px solid var(--card-bg);
   user-select: none;
 }
 
@@ -504,14 +504,15 @@ h1 {
 }
 
 .calendar__day:hover:not(.calendar__day--empty) {
-  border-color: #1a1410;
+  border-color: var(--accent);
   z-index: 1;
 }
 
 .calendar__day--today {
   font-weight: 700;
-  outline: 1.5px solid var(--accent-dark);
+  outline: 1.5px solid var(--accent);
   outline-offset: -2px;
+  color: var(--accent);
 }
 
 /* Event days (from events.json) */
@@ -519,6 +520,7 @@ h1 {
   cursor: pointer;
   position: relative;
   font-weight: 600;
+  color: #1a1410;
 }
 
 .calendar__day--event::after {
@@ -527,8 +529,8 @@ h1 {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #1a1410;
-  color: #fff;
+  background-color: var(--ink);
+  color: #1a1410;
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 11px;
@@ -548,7 +550,7 @@ h1 {
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #1a1410;
+  border-top-color: var(--ink);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
@@ -566,8 +568,8 @@ h1 {
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #1a1410;
-  color: #fff;
+  background-color: var(--ink);
+  color: #1a1410;
   padding: 6px 10px;
   border-radius: 4px;
   font-size: 11px;
@@ -585,7 +587,7 @@ h1 {
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: #1a1410;
+  border-top-color: var(--ink);
 }
 
 @media (max-width: 960px) {
