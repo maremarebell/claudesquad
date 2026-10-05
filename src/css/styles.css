@@ -82,11 +82,6 @@ a {
   opacity: 0.85;
 }
 
-.topbar__button--disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 /* Header */
 .header {
   background-color: #000;
