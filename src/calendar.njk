@@ -11,7 +11,7 @@ title: 2026 Calendar
 
   <div class="calendar__grid">
     {% for month in calendarMonths %}
-      <div class="calendar__month-block">
+      <div class="calendar__month-block{% if month.isPast %} calendar__month-block--past{% endif %}">
         <div class="calendar__month-header">
           <span class="calendar__month-name">{{ month.name }}</span>
           <span class="calendar__month-year">{{ month.year }}</span>

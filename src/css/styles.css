@@ -418,6 +418,11 @@ h1 {
   border: 1px solid var(--border);
 }
 
+.calendar__month-block--past {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
 .calendar__month-header {
   padding: 10px 13px;
   border-bottom: 1px solid var(--border);
@@ -599,6 +604,10 @@ h1 {
 @media (max-width: 768px) {
   .calendar {
     padding: var(--page-padding-x-mobile);
+  }
+
+  .calendar__month-block--past {
+    display: none;
   }
 
   .calendar__title {

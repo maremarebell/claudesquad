@@ -74,7 +74,10 @@ module.exports = function() {
       const weeks = [];
       for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
 
-      months.push({ name: MONTH_NAMES[monthIndex], year, weeks });
+      const isPast = year < todayUTC.getUTCFullYear() ||
+        (year === todayUTC.getUTCFullYear() && monthIndex < todayUTC.getUTCMonth());
+
+      months.push({ name: MONTH_NAMES[monthIndex], year, weeks, isPast });
     }
   });
 
