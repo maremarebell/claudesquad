@@ -1,7 +1,7 @@
 /* Site color variables */
 :root {
   /* Site background + palette (from the Claude Squad logo) */
-  --site-bg: #0b0b0b;
+  --site-bg: #000000;
   --ink: #f3ece4;
   --ink-muted: #a89a8e;
   --accent: #d9835f;
