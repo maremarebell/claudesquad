@@ -17,7 +17,7 @@ All meetups live in one file: `src/_data/events.json`. Add an entry (or edit one
 - `title` — shown in the calendar tooltip and, if it's the next upcoming one, in the homepage hero.
 - `emoji` — optional, shown on the calendar day.
 - `color` — optional CSS color for the day's background; defaults to the site accent.
-- `partiful` — the RSVP link. If you don't have one yet, set it to `null` — the day will still show on the calendar (click it to see the title) and the homepage hero will tell people to check the WhatsApp group instead.
+- `partiful` — the RSVP link. If you don't have one yet, set it to `null`. The day still shows on the calendar (click it to see the title), and the homepage hero links to the calendar instead of an RSVP.
 
 The calendar and the homepage hero both read straight from this file — no other files need to change.
 

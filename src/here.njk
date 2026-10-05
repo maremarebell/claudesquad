@@ -16,8 +16,10 @@ permalink: /here/
   <div id="here-app" hidden>
     <p class="here__who">Signed in as <b id="here-name"></b> · <button class="here__link" id="here-signout" type="button">Sign out</button></p>
 
-    <div id="here-bump" hidden>
-      <button class="here__btn here__btn--bump" id="here-bump-btn" type="button">Friendship&shy;mog</button>
+    <div id="here-checkin" hidden>
+      <div class="here__stage" aria-hidden="true"><div class="here__pig" id="here-pig"></div></div>
+      <div class="here__pips" aria-hidden="true"><i></i><i></i><i></i></div>
+      <button class="here__btn here__btn--checkin" id="here-checkin-btn" type="button">Friendship&shy;mog</button>
     </div>
 
     <div class="here__score">
@@ -48,5 +50,5 @@ permalink: /here/
   <label class="here__haptic" aria-hidden="true"><input type="checkbox" switch id="haptic" tabindex="-1"></label>
 </div>
 
-<script type="application/json" id="here-config">{{ { supabaseUrl: site.supabaseUrl, supabaseAnonKey: site.supabaseAnonKey, repo: site.repo, events: events } | dump | safe }}</script>
+<script type="application/json" id="here-config">{{ { supabaseUrl: site.supabaseUrl, supabaseAnonKey: site.supabaseAnonKey, repo: site.repo, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
 <script type="module" src="/js/here.js"></script>

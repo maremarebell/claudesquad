@@ -1,11 +1,12 @@
 {
   "name": "claude-squad",
   "version": "1.0.0",
-  "description": "Claude Squad — home, calendar, and crew profiles",
+  "description": "Claude Squad \u2014 home, calendar, and crew profiles",
   "scripts": {
     "build": "eleventy",
     "dev": "eleventy --serve",
-    "start": "eleventy --serve"
+    "start": "eleventy --serve",
+    "test": "node --test test/*.test.*"
   },
   "keywords": [
     "eleventy",

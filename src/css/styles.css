@@ -48,6 +48,11 @@
   border-radius: 0;
 }
 
+/* components set display, which would otherwise beat the hidden attribute */
+[hidden] {
+  display: none !important;
+}
+
 body {
   font-family: 'Open Sans', sans-serif;
   line-height: 1.7;
@@ -122,9 +127,6 @@ mark {
   inset: 0;
   pointer-events: none;
   z-index: var(--z-chrome);
-}
-
-.page::before {
   background:
     linear-gradient(var(--rule), var(--rule)) 6% 0 / 1px 100% no-repeat,
     linear-gradient(var(--rule), var(--rule)) 94% 0 / 1px 100% no-repeat;
@@ -179,6 +181,10 @@ mark {
   letter-spacing: 0.08em;
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
+}
+
+.topbar__button:focus-visible {
+  outline-color: var(--on-accent);
 }
 
 .topbar__button:hover {
@@ -377,6 +383,14 @@ h2 {
 
 .hero[data-three] {
   cursor: crosshair;
+}
+
+.hero__canvas[hidden] {
+  display: none;
+}
+
+.hero__canvas:focus-visible {
+  outline-offset: -4px;
 }
 
 .hero__canvas {
@@ -621,34 +635,113 @@ h2 {
   background: var(--ink);
 }
 
-.here__btn--bump {
-  justify-content: center;
-  aspect-ratio: 1;
-  margin: var(--space-md) 0 var(--space-2xs);
-  font-family: var(--pixel);
-  font-size: clamp(14px, 4.4vw, 22px);
-  line-height: 1.6;
-  hyphens: manual;
-  /* hazard stripes run round the edge once it is armed */
-  outline: 0 solid transparent;
-  outline-offset: 0;
+/* the pig stage: the logo pig on a little gym floor, waiting for shakes */
+.here__stage {
+  position: relative;
+  margin: var(--space-md) 0 var(--space-xs);
+  padding: var(--space-lg) var(--space-md) var(--space-sm);
+  border-bottom: 2px solid var(--accent);
+  text-align: center;
 }
 
-.here__btn--bump::after {
+.here__pig {
+  display: inline-block;
+  width: min(260px, 70%);
+  transform-origin: 50% 100%;
+}
+
+.here__pig svg {
+  display: block;
+  width: 100%;
+  fill: var(--accent);
+  overflow: visible;
+}
+
+.pig__body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.pig__lid {
+  fill: var(--accent);
+  opacity: 0;
+  animation: blink 4.2s steps(1) infinite;
+}
+
+@keyframes blink {
+  96% { opacity: 1; }
+}
+
+/* armed: the pig bobs while it waits for you */
+.here--armed .here__pig {
+  animation: bob 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes bob {
+  to { transform: translateY(-4px); }
+}
+
+/* checked in: happy eyes, the bar stays up */
+.here--checked-in .pig__lid {
+  animation: none;
+  opacity: 1;
+}
+
+.here--checked-in .pig__bar {
+  transform: translateY(-2px);
+  transition: transform 0.3s;
+}
+
+.here__pips {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2xs);
+  margin-bottom: var(--space-md);
+}
+
+.here__pips i {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent);
+  transition: background 0.1s, transform 0.1s;
+}
+
+.here__pips i.on {
+  background: var(--accent);
+  transform: scale(1.2);
+}
+
+.here--checked-in .here__pips {
+  display: none;
+}
+
+.here__btn--checkin {
+  justify-content: center;
+  font-family: var(--pixel);
+  font-size: clamp(13px, 4vw, 16px);
+  line-height: 1.6;
+  hyphens: manual;
+}
+
+.here__btn--checkin::after {
   content: none;
 }
 
-.here--armed .here__btn--bump {
-  border: 12px solid transparent;
-  background:
-    linear-gradient(var(--accent), var(--accent)) padding-box,
-    repeating-linear-gradient(-45deg, var(--on-accent) 0 10px, var(--accent) 10px 20px) border-box;
-  background-size: auto, 28px 28px;
+.here__btn:disabled {
+  cursor: default;
+}
+
+/* while it listens for shakes, hazard tape runs along the button */
+.here--armed .here__btn--checkin:disabled {
+  background: repeating-linear-gradient(-45deg, var(--on-accent) 0 10px, var(--accent) 10px 20px);
+  background-size: 28px 28px;
+  color: var(--ink);
+  text-shadow: 0 0 6px var(--on-accent), 0 0 2px var(--on-accent);
   animation: hazard 0.6s linear infinite;
 }
 
 @keyframes hazard {
-  to { background-position: 0 0, 28px 0; }
+  to { background-position: 28px 0; }
 }
 
 .here__link {
@@ -678,7 +771,7 @@ h2 {
   color: var(--accent);
 }
 
-.here--bumped .here__points {
+.here--checked-in .here__points {
   animation: here-pop 0.5s steps(4);
 }
 
@@ -688,26 +781,31 @@ h2 {
 
 .here__plus {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 50%;
+  top: 30%;
   font-family: var(--pixel);
-  font-size: 20px;
+  font-size: 22px;
   color: var(--ink);
   pointer-events: none;
 }
 
 .here__px {
   position: absolute;
-  left: 36px;
-  top: 50%;
+  left: 50%;
+  top: 45%;
   width: 8px;
   height: 8px;
   background: var(--accent);
   pointer-events: none;
 }
 
-.here__px:nth-child(3n) {
+/* a 5x4 pixel heart: a mask, so it takes whatever background it is given */
+.here__px--heart {
+  width: 15px;
+  height: 12px;
   background: var(--ink);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h2v1h1V0h2v2H4v1H3v1H2V3H1V2H0z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h2v1h1V0h2v2H4v1H3v1H2V3H1V2H0z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .here__board li.is-you span::after {
@@ -809,8 +907,10 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .here--armed .here__btn--bump,
-  .here--bumped .here__points,
+  .here--armed .here__btn--checkin:disabled,
+  .here--armed .here__pig,
+  .pig__lid,
+  .here--checked-in .here__points,
   .here__status::after {
     animation: none;
   }
@@ -1225,39 +1325,6 @@ h2 {
   z-index: 1;
 }
 
-.hero__canvas[hidden] {
-  display: none;
-}
-
-.hero__canvas:focus-visible {
-  outline-offset: -4px;
-}
-
-.hero__motion {
-  position: absolute;
-  top: 52px;
-  right: calc(6% + 16px);
-  z-index: 4;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--rule);
-  background: var(--site-bg);
-  color: var(--ink-muted);
-  font: 11px var(--mono);
-  text-transform: uppercase;
-  cursor: pointer;
-}
-
-.hero__motion:hover,
-.hero__motion:focus-visible {
-  color: var(--ink);
-  border-color: var(--accent);
-}
-
-.hero__motion:disabled {
-  cursor: default;
-}
-
 .calendar__day--today {
   font-weight: 700;
   outline: 1.5px solid var(--accent);
@@ -1283,7 +1350,9 @@ h2 {
   color: #1a1410;
   padding: 6px 10px;
   font-size: 11px;
-  white-space: nowrap;
+  width: max-content;
+  max-width: min(220px, 60vw);
+  white-space: normal;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
@@ -1308,7 +1377,9 @@ h2 {
 }
 
 .calendar__day--event:hover::after,
-.calendar__day--event:hover::before {
+.calendar__day--event:hover::before,
+.calendar__day--event:focus-visible::after,
+.calendar__day--event:focus-visible::before {
   opacity: 1;
 }
 
@@ -1321,7 +1392,9 @@ h2 {
   color: #1a1410;
   padding: 6px 10px;
   font-size: 11px;
-  white-space: nowrap;
+  width: max-content;
+  max-width: min(220px, 60vw);
+  white-space: normal;
   margin-bottom: 5px;
   z-index: var(--z-tooltip);
   font-family: var(--mono);
