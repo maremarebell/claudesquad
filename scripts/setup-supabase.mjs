@@ -8,8 +8,9 @@
 // GITHUB_SECRET from a GitHub OAuth app to switch GitHub sign-in on; the first
 // run prints the callback URL that app needs. Safe to re-run.
 //
-// SITE_URL (default http://localhost:8080) is where sign-in returns to; set it
-// to the deployed site once there is one.
+// SITE_URL is where sign-in returns to. Set it once the site is deployed; a
+// later run without it keeps whatever the project already has (or localhost
+// on the very first run). Redirect URLs are only ever added, never dropped.
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
@@ -18,7 +19,6 @@ if (!token) {
   console.error('Set SUPABASE_ACCESS_TOKEN: make one at https://supabase.com/dashboard/account/tokens');
   process.exit(1);
 }
-const siteUrl = (process.env.SITE_URL || 'http://localhost:8080').replace(/\/$/, '');
 const NAME = 'claudesquad';
 
 async function api(method, path, body) {
@@ -48,9 +48,11 @@ if (!project) {
 const ref = project.id || project.ref;
 
 process.stdout.write('Waiting for the database');
-for (;;) {
+for (let tries = 0; ; tries++) {
   const { status } = await api('GET', `/projects/${ref}`);
   if (status === 'ACTIVE_HEALTHY') break;
+  if (status === 'INACTIVE') throw new Error('The project is paused. Restore it in the Supabase dashboard, then run this again.');
+  if (/FAILED/.test(status) || tries > 120) throw new Error(`The project is stuck in ${status}. Check the Supabase dashboard.`);
   process.stdout.write('.');
   await new Promise(r => setTimeout(r, 5000));
 }
@@ -61,16 +63,20 @@ for (const file of readdirSync('supabase/migrations').sort()) {
   console.log(`Applied ${file}`);
 }
 
-const auth = {
-  site_url: siteUrl,
-  uri_allow_list: [`${siteUrl}/here/`, 'http://localhost:8080/here/'].join(','),
-};
+const current = await api('GET', `/projects/${ref}/config/auth`);
+const keep = current.site_url && !/^http:\/\/(localhost|127\.0\.0\.1)(:3000)?\/?$/.test(current.site_url) ? current.site_url : null;
+const siteUrl = (process.env.SITE_URL || keep || 'http://localhost:8080').replace(/\/$/, '');
+const allow = new Set((current.uri_allow_list || '').split(',').filter(Boolean));
+allow.add(`${siteUrl}/here/`);
+allow.add('http://localhost:8080/here/');
+const auth = { site_url: siteUrl, uri_allow_list: [...allow].join(',') };
 const { GITHUB_CLIENT_ID: id, GITHUB_SECRET: secret } = process.env;
 if (id && secret) Object.assign(auth, { external_github_enabled: true, external_github_client_id: id, external_github_secret: secret });
 await api('PATCH', `/projects/${ref}/config/auth`, auth);
 
 const keys = await api('GET', `/projects/${ref}/api-keys?reveal=false`);
 const anon = keys.find(k => k.name === 'anon');
+if (!anon) throw new Error('No "anon" API key on the project. Re-enable legacy API keys under Project Settings > API Keys.');
 const url = `https://${ref}.supabase.co`;
 const site = JSON.parse(readFileSync('src/_data/site.json', 'utf8'));
 Object.assign(site, { supabaseUrl: url, supabaseAnonKey: anon.api_key });
@@ -86,5 +92,6 @@ GitHub sign-in is still off. One step left:
        Homepage URL:               ${siteUrl}
        Authorization callback URL: ${url}/auth/v1/callback
   2. Generate a client secret, then run this again with
-       GITHUB_CLIENT_ID=... GITHUB_SECRET=... SUPABASE_ACCESS_TOKEN=... node scripts/setup-supabase.mjs`);
+       GITHUB_CLIENT_ID=... GITHUB_SECRET=... SUPABASE_ACCESS_TOKEN=... node scripts/setup-supabase.mjs
+     (add SITE_URL=https://... once the site is deployed)`);
 }

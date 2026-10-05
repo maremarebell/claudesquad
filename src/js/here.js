@@ -69,7 +69,8 @@ function buzz(pattern) {
 }
 
 function signIn() {
-  db.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: location.href.split('#')[0] } });
+  // exactly /here/: that's the URL on Supabase's redirect allow-list
+  db.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${location.origin}/here/` } });
 }
 
 async function saveMember() {
@@ -163,14 +164,14 @@ function burst(big) {
   }
 }
 
-// Where the phone is, asked for at the tap so it's ready by the third shake.
-// The bump only matches people within 250m of each other.
-let fix = null;
+// Where the phone is. Asked at the tap to warm it up, then again for every
+// bump (a fix up to 30s old is reused), so walking to the gym with the page
+// open doesn't leave a stale location behind. Matches are within 250m.
 function locate() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) return reject(new Error("This browser can't share a location."));
     navigator.geolocation.getCurrentPosition(
-      pos => resolve(fix = { lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       err => reject(new Error(err.code === err.PERMISSION_DENIED
         ? 'Location is off. A bump needs it to know you are with the squad.'
         : "Couldn't get a location. Step outside the weights room and try again.")),
@@ -191,52 +192,60 @@ function rearm(msg) {
 }
 
 // The third shake lands here. Send the bump; if nobody nearby has shaken in
-// the last 20 seconds, wait up to 20 more for someone whose bump checks us in.
+// the last 20 seconds, send it again every 2s for 20s. Re-sending (rather than
+// just watching for a check-in) is what lets someone who's already in see
+// that their newcomer arrived, and it catches a partner who bumped a moment
+// later. If the user changes mid-wait, the loop just stops.
 async function bump() {
   if (checkingIn || !user) return;
+  const me = user;
   checkingIn = true;
   disarm();
   root.classList.add('here--waiting');
   say('Bumping…');
   const wasIn = root.classList.contains('here--checked-in');
   try {
-    const at = fix || await locate();
-    const { data, error } = await db.rpc('bump', { at_lat: at.lat, at_lng: at.lng });
-    if (error) throw new Error(error.message);
-    if (data.matched) return landed(data.with, wasIn);
-    say('Now get someone next to you to shake too…');
-    for (let i = 0; i < 10 && user; i++) {
-      await sleep(2000);
-      const { data: row } = await db.from('checkins').select('event_date')
-        .eq('user_id', user.id).eq('event_date', nyToday()).maybeSingle();
-      if (row && !wasIn) return landed(null, wasIn);
+    for (let i = 0; i <= 10; i++) {
+      if (i) await sleep(2000);
+      if (user !== me) return;
+      const at = await locate();
+      const { data, error } = await db.rpc('bump', { at_lat: at.lat, at_lng: at.lng });
+      if (user !== me) return;
+      if (error) throw new Error(error.message);
+      if (data.matched) return landed(data.with, wasIn);
+      if (!i) say('Now get someone next to you to shake too…');
     }
     rearm('Nobody shook back. Shake together, at the same time.');
   } catch (e) {
-    rearm(e.message);
+    if (user === me) rearm(e.message);
   }
 }
 
 // Matched. Celebrate, and on someone's first meetup put the GitHub link
 // right there, because that's the moment they're in the squad.
 async function landed(names, wasIn) {
+  const me = user;
   buzz([60, 40, 120]);
   root.classList.remove('here--waiting', 'here--armed');
   root.classList.add('here--checked-in');
-  checkingIn = false;
+  if (!wasIn) $('#here-checkin-btn').hidden = true;
   const who = names?.length ? ` with ${names.join(', ')}` : '';
   let mine = 0;
   try {
     ({ mine } = await renderBoard());
   } catch (e) {
+    checkingIn = false;
     return say(e.message);
   }
+  // checkingIn stays set until here, so a tap during the refresh can't re-arm
+  checkingIn = false;
+  if (user !== me) return;
   if (wasIn) {
     say(`Bumped${who}. They're in.`);
     burst(false);
+    root.classList.add('here--armed');
     return listen();
   }
-  $('#here-checkin-btn').hidden = true;
   say(`Bumped${who}. Meetup #${mine}, +${POINTS_PER_MEETUP} points.`);
   burst([1, 5, 10, 25, 50, 100].includes(mine));
   show('#here-welcome', mine === 1);
@@ -289,6 +298,7 @@ function listen() {
 // nothing is awaited before it) and starts finding the location. Once armed,
 // a tap is the fallback for phones that won't shake.
 async function arm() {
+  if (checkingIn) return;
   if (root.classList.contains('here--armed')) {
     rep(1);
     return bump();

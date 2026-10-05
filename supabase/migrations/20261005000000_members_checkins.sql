@@ -117,6 +117,10 @@ begin
     raise exception 'a location is needed to bump';
   end if;
 
+  -- One bump at a time. Two phones bumping in the same instant would each
+  -- look for the other before either row was committed, and both miss.
+  perform pg_advisory_xact_lock(hashtext('public.bump'));
+
   delete from public.bumps where at < now() - interval '1 hour';
   insert into public.bumps (user_id, lat, lng) values (me, at_lat, at_lng);
 
@@ -136,7 +140,7 @@ begin
 
   return jsonb_build_object(
     'matched', true,
-    'with', (select jsonb_agg(m.name order by m.name) from public.members m where m.id = any(partners))
+    'with', (select jsonb_agg(coalesce(m.name, m.login) order by m.name) from public.members m where m.id = any(partners))
   );
 end;
 $$;

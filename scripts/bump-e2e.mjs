@@ -111,6 +111,29 @@ await check('someone already in can bump a newcomer in', async () => {
   assert.ok(sql(`select count(*) from public.checkins where user_id = '${c.id}';`) === '1');
 });
 
+await check('two bumps in the same instant still match', async () => {
+  sql(`update public.bumps set at = now() - interval '30 seconds';`);
+  const d = await githubUser(`dee${stamp}`);
+  const e = await githubUser(`eli${stamp}`);
+  for (const u of [d, e]) await call('/rest/v1/members', { jwt: u.jwt, method: 'POST', body: { id: u.id, login: u.login, name: u.login } });
+  const both = await Promise.all([d, e].map(u => call('/rest/v1/rpc/bump', { jwt: u.jwt, method: 'POST', body: gym })));
+  assert.ok(both.some(r => r.body.matched), JSON.stringify(both.map(r => r.body)));
+  assert.equal(sql(`select count(*) from public.checkins where user_id in ('${d.id}', '${e.id}');`), '2');
+});
+
+await check('someone already in who shakes first sees the newcomer on their next bump', async () => {
+  sql(`update public.bumps set at = now() - interval '30 seconds';`);
+  const f = await githubUser(`fay${stamp}`);
+  await call('/rest/v1/members', { jwt: f.jwt, method: 'POST', body: { id: f.id, login: f.login, name: 'Fay' } });
+  const first = await call('/rest/v1/rpc/bump', { jwt: a.jwt, method: 'POST', body: gym });
+  assert.equal(first.body.matched, false);
+  const newcomer = await call('/rest/v1/rpc/bump', { jwt: f.jwt, method: 'POST', body: nearby });
+  assert.equal(newcomer.body.matched, true);
+  const again = await call('/rest/v1/rpc/bump', { jwt: a.jwt, method: 'POST', body: gym });
+  assert.equal(again.body.matched, true);
+  assert.deepEqual(again.body.with, ['Fay']);
+});
+
 await check('the leaderboard read works for members', async () => {
   const { status, body } = await call('/rest/v1/checkins?select=event_date,members(id,name)', { jwt: b.jwt });
   assert.equal(status, 200);
