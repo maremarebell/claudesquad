@@ -2,8 +2,8 @@
 
 export const SHAKES = 3;
 
-// New York's calendar date. Moves together with the insert policy in
-// supabase/schema.sql, which compares against the same zone.
+// New York's calendar date. Moves together with public.bump() in
+// supabase/migrations, which dates check-ins in the same zone.
 export const nyToday = (date = new Date()) => date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
 // Meetups per member, counting only check-ins on an events.json date, plus who

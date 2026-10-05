@@ -726,8 +726,24 @@ h2 {
   transform: scale(1.2);
 }
 
-.here--checked-in .here__pips {
-  display: none;
+/* a bump is out: the pig bobs fast while it waits for the match */
+.here--waiting .here__pig {
+  animation: bob 0.25s ease-in-out infinite alternate;
+}
+
+/* first meetup: the GitHub link, right where the celebration is */
+.here__welcome {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 2px solid var(--accent);
+}
+
+.here__welcome-title {
+  margin-bottom: var(--space-sm);
+  font-family: var(--pixel);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--accent);
 }
 
 .here__btn--checkin {
@@ -924,6 +940,7 @@ h2 {
 @media (prefers-reduced-motion: reduce) {
   .here--armed .here__btn--checkin:disabled,
   .here--armed .here__pig,
+  .here--waiting .here__pig,
   .pig__lid,
   .here--checked-in .here__points,
   .here__status::after {

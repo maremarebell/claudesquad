@@ -1,5 +1,6 @@
-// Check-in: sign in with GitHub, then on a meetup day shake the phone. The pig
-// does a rep for every shake, and the third one checks you in.
+// Check-in: sign in with GitHub, then on a meetup day shake your phone at the
+// same time as someone next to you, like Bump. The pig does a rep per shake;
+// the third sends a bump, and two bumps close in time and place check both in.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { SHAKES, nyToday, tally, shakeCounter, userChanges } from './checkin.js';
 
@@ -125,7 +126,9 @@ async function renderBoard() {
     const login = user.user_metadata.user_name;
     // JSON strings are valid YAML, so a name with a colon can't break the front matter
     const template = `---\nname: ${JSON.stringify(user.user_metadata.full_name || login)}\nrole:\nphoto:\n---\n\n`;
-    $('#here-profile-link').href = `${cfg.repo}/new/main/src/profiles?filename=${encodeURIComponent(login)}.md&value=${encodeURIComponent(template)}`;
+    const href = `${cfg.repo}/new/main/src/profiles?filename=${encodeURIComponent(login)}.md&value=${encodeURIComponent(template)}`;
+    $('#here-profile-link').href = href;
+    $('#here-welcome-link').href = href;
   }
 
   return { mine, inToday: present.some(m => m.id === user.id) };
@@ -160,60 +163,103 @@ function burst(big) {
   }
 }
 
-async function checkIn() {
+// Where the phone is, asked for at the tap so it's ready by the third shake.
+// The bump only matches people within 250m of each other.
+let fix = null;
+function locate() {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error("This browser can't share a location."));
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve(fix = { lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      err => reject(new Error(err.code === err.PERMISSION_DENIED
+        ? 'Location is off. A bump needs it to know you are with the squad.'
+        : "Couldn't get a location. Step outside the weights room and try again.")),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  });
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Back to waiting for shakes, after a miss or an error.
+function rearm(msg) {
+  checkingIn = false;
+  root.classList.remove('here--waiting');
+  root.querySelectorAll('.here__pips i').forEach(p => p.classList.remove('on'));
+  say(msg);
+  listen();
+}
+
+// The third shake lands here. Send the bump; if nobody nearby has shaken in
+// the last 20 seconds, wait up to 20 more for someone whose bump checks us in.
+async function bump() {
   if (checkingIn || !user) return;
-  // a page left open past midnight would otherwise check in on a non-meetup day
-  if (!eventOn(nyToday())) return render({ user });
   checkingIn = true;
   disarm();
-  const { error } = await db.from('checkins').insert({ user_id: user.id, event_date: nyToday() });
-  // 23505 is Postgres unique_violation: you were already in today
-  if (error && error.code !== '23505') {
-    checkingIn = false;
-    return tapInstead(`Check-in failed: ${error.message}. Tap to try again.`);
+  root.classList.add('here--waiting');
+  say('Bumping…');
+  const wasIn = root.classList.contains('here--checked-in');
+  try {
+    const at = fix || await locate();
+    const { data, error } = await db.rpc('bump', { at_lat: at.lat, at_lng: at.lng });
+    if (error) throw new Error(error.message);
+    if (data.matched) return landed(data.with, wasIn);
+    say('Now get someone next to you to shake too…');
+    for (let i = 0; i < 10 && user; i++) {
+      await sleep(2000);
+      const { data: row } = await db.from('checkins').select('event_date')
+        .eq('user_id', user.id).eq('event_date', nyToday()).maybeSingle();
+      if (row && !wasIn) return landed(null, wasIn);
+    }
+    rearm('Nobody shook back. Shake together, at the same time.');
+  } catch (e) {
+    rearm(e.message);
   }
+}
+
+// Matched. Celebrate, and on someone's first meetup put the GitHub link
+// right there, because that's the moment they're in the squad.
+async function landed(names, wasIn) {
   buzz([60, 40, 120]);
-  root.classList.remove('here--armed');
+  root.classList.remove('here--waiting', 'here--armed');
   root.classList.add('here--checked-in');
-  $('#here-checkin-btn').hidden = true;
+  checkingIn = false;
+  const who = names?.length ? ` with ${names.join(', ')}` : '';
   let mine = 0;
   try {
     ({ mine } = await renderBoard());
   } catch (e) {
     return say(e.message);
   }
-  if (error) return say("You're already checked in today.");
-  say(`Meetup #${mine}. +${POINTS_PER_MEETUP} points.`);
-  burst([5, 10, 25, 50, 100].includes(mine));
+  if (wasIn) {
+    say(`Bumped${who}. They're in.`);
+    burst(false);
+    return listen();
+  }
+  $('#here-checkin-btn').hidden = true;
+  say(`Bumped${who}. Meetup #${mine}, +${POINTS_PER_MEETUP} points.`);
+  burst([1, 5, 10, 25, 50, 100].includes(mine));
+  show('#here-welcome', mine === 1);
 }
 
 function tapInstead(msg) {
   const btn = $('#here-checkin-btn');
   say(msg);
-  btn.textContent = 'Tap to check in';
+  btn.textContent = 'Tap to bump';
   btn.disabled = false;
 }
 
-// The tap arms the sensors (iOS asks permission, and only inside the tap, so
-// nothing is awaited before it). Then the pig waits for shakes. On a laptop
-// the tap is the check-in. Once armed, a tap only works as the fallback.
-async function arm() {
+// Listen for three shakes, then bump.
+function listen() {
   const btn = $('#here-checkin-btn');
-  if (root.classList.contains('here--armed')) return checkIn();
-  root.classList.add('here--armed');
-  const hasMotion = 'DeviceMotionEvent' in window && matchMedia('(pointer: coarse)').matches;
-  if (!hasMotion) {
-    rep(1);
-    return checkIn();
-  }
-  if (typeof DeviceMotionEvent.requestPermission === 'function') {
-    const state = await DeviceMotionEvent.requestPermission().catch(() => 'denied');
-    if (state !== 'granted') return tapInstead('No motion access, so tap to check in instead.');
+  btn.hidden = false;
+  if (!root.classList.contains('here--motion')) {
+    btn.textContent = 'Tap to bump';
+    btn.disabled = false;
+    return;
   }
   btn.textContent = 'Shake!';
   btn.disabled = true;
-  say('Shake your phone to friendshipmog.');
-
   const pips = [...root.querySelectorAll('.here__pips i')];
   const step = shakeCounter();
   let heard = false;
@@ -224,14 +270,14 @@ async function arm() {
     buzz(25);
     rep(n);
     pips.forEach((p, i) => p.classList.toggle('on', i < n));
-    if (n >= SHAKES) {
-      checkIn();
-    }
+    if (n >= SHAKES) bump();
   };
   addEventListener('devicemotion', onMotion);
   // sensors blocked in site settings never send an event: hand the tap back
   const silent = setTimeout(() => {
-    if (!heard && !checkingIn) tapInstead("Your phone isn't sending motion, so tap to check in instead.");
+    if (heard || checkingIn) return;
+    root.classList.remove('here--motion');
+    tapInstead("Your phone isn't sending motion, so tap at the same time as someone next to you.");
   }, 3000);
   disarm = () => {
     removeEventListener('devicemotion', onMotion);
@@ -239,16 +285,38 @@ async function arm() {
   };
 }
 
+// The tap arms the sensors (iOS asks permission, and only inside the tap, so
+// nothing is awaited before it) and starts finding the location. Once armed,
+// a tap is the fallback for phones that won't shake.
+async function arm() {
+  if (root.classList.contains('here--armed')) {
+    rep(1);
+    return bump();
+  }
+  root.classList.add('here--armed');
+  const hasMotion = 'DeviceMotionEvent' in window && matchMedia('(pointer: coarse)').matches;
+  let motionOk = hasMotion;
+  if (hasMotion && typeof DeviceMotionEvent.requestPermission === 'function') {
+    motionOk = await DeviceMotionEvent.requestPermission().catch(() => 'denied') === 'granted';
+  }
+  locate().catch(e => say(e.message));
+  root.classList.toggle('here--motion', motionOk);
+  say(motionOk ? 'Shake your phone at the same time as someone next to you.'
+    : 'Tap at the same time as someone next to you.');
+  listen();
+}
+
 async function render(session) {
   user = session?.user || null;
   disarm();
   checkingIn = false;
-  root.classList.remove('here--armed', 'here--checked-in');
+  root.classList.remove('here--armed', 'here--checked-in', 'here--waiting', 'here--motion');
   const btn = $('#here-checkin-btn');
   btn.hidden = false;
   btn.disabled = false;
   btn.innerHTML = 'Friendship&shy;mog';
   root.querySelectorAll('.here__pips i').forEach(p => p.classList.remove('on'));
+  show('#here-welcome', false);
   show('#here-signin', !user);
   show('#here-app', !!user);
   $('#here-title').textContent = user ? 'Check in' : 'Log in';
@@ -261,12 +329,14 @@ async function render(session) {
     const today = nyToday();
     const event = eventOn(today);
     const next = nextAfter(today);
-    show('#here-checkin', !!event && !inToday);
+    // already in? the pig stays out, so you can bump a newcomer in
+    show('#here-checkin', !!event);
     if (inToday) {
       root.classList.add('here--checked-in');
-      say(`You're checked in for ${event ? event.title : 'today'}.`);
+      btn.textContent = 'Bump someone in';
+      say(`You're in for ${event ? event.title : 'today'}.`);
     } else if (event) {
-      say(`${event.title} is today.`);
+      say(`${event.title} is today. Bump someone to check in.`);
     } else {
       say(next ? `No meetup today. Next one is ${next.title} on ${next.date}.` : 'No meetup on the calendar.');
     }
