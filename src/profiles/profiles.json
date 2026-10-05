@@ -1,5 +1,5 @@
 {
   "layout": "profile.njk",
   "tags": "profile",
-  "permalink": "/{{ page.fileSlug }}/"
+  "permalink": "/members/{{ page.fileSlug }}/"
 }

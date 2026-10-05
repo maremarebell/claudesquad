@@ -1,0 +1,23 @@
+---
+layout: base.njk
+title: Members
+permalink: /members/
+---
+
+<div class="content">
+  <h2>Members</h2>
+
+  <div class="members__grid">
+    {% for member in collections.profile %}
+      <a href="{{ member.url }}" class="members__item">
+        {% if member.data.photo %}
+          <img src="{{ member.data.photo }}" alt="{{ member.data.name }}" class="members__photo">
+        {% else %}
+          <div class="members__photo members__photo--placeholder" aria-hidden="true"></div>
+        {% endif %}
+        <span class="members__name">{{ member.data.name }}</span>
+        {% if member.data.role %}<span class="members__role">{{ member.data.role }}</span>{% endif %}
+      </a>
+    {% endfor %}
+  </div>
+</div>

@@ -16,7 +16,8 @@ There's no fixed dev port in package.json; this session has been running it on `
 
 - `src/index.njk` — homepage: next-meetup banner, hero logo, intro copy, photo gallery (sorted by date, newest first)
 - `src/calendar.njk` — calendar page, entirely data-driven (see below)
-- `src/profiles/*.md` — one file per person; filename *is* the URL slug (`mare-co-captain.md` → `/mare-co-captain/`). Shared front matter/layout comes from `src/profiles/profiles.json` (11ty directory data file: `layout: profile.njk`, `tags: profile`, `permalink: /{{ page.fileSlug }}/`)
+- `src/members.njk` — `/members/` index, lists everyone in the `profile` collection (photo, name, role) linking to their page
+- `src/profiles/*.md` — one file per person; filename *is* the URL slug (`mare-co-captain.md` → `/members/mare-co-captain/`). Shared front matter/layout comes from `src/profiles/profiles.json` (11ty directory data file: `layout: profile.njk`, `tags: profile`, `permalink: /members/{{ page.fileSlug }}/`)
 - `src/gallery/*.md` — one file per photo, front matter only (`image`, `date`, `event`, `caption`). `src/gallery/gallery.json` sets `tags: photo`, `permalink: false` (these don't render their own pages, just feed the `photo` collection)
 - `src/_includes/layouts/base.njk` — shared shell: head/fonts/favicon, header+nav, WhatsApp topbar, footer. `{{ content | safe }}` is the page body.
 - `src/_includes/layouts/profile.njk` — profile page layout (photo circle, name, role, bio)
@@ -38,6 +39,6 @@ There's no fixed dev port in package.json; this session has been running it on `
 
 ## Content model
 
-- No profile index page exists on purpose — profiles are direct-URL only (`/slug/`), per the original request.
+- Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
 - Git: local repo only, no GitHub remote configured yet.

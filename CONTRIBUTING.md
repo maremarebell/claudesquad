@@ -24,7 +24,7 @@ The calendar and the homepage banner both read straight from this file — no ot
 ## Add your profile
 
 1. Add a photo (optional) to `src/images/profiles/your-name.jpg`.
-2. Create `src/profiles/your-slug.md` (the filename becomes the URL, e.g. `your-slug.md` → `/your-slug/`):
+2. Create `src/profiles/your-slug.md` (the filename becomes the URL, e.g. `your-slug.md` → `/members/your-slug/`). You'll also show up automatically on the `/members` list.
 
    ```md
    ---

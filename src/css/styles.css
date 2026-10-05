@@ -414,6 +414,50 @@ h2 {
   color: var(--ink);
 }
 
+/* Members index */
+.members__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 24px;
+}
+
+.members__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  text-decoration: none;
+  gap: 4px;
+}
+
+.members__photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+  margin-bottom: 8px;
+  transition: opacity 0.2s;
+}
+
+.members__item:hover .members__photo {
+  opacity: 0.8;
+}
+
+.members__photo--placeholder {
+  background: var(--card-bg);
+}
+
+.members__name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.members__role {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
 /* Footer */
 .footer {
   background-color: var(--site-bg);
