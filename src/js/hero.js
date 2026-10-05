@@ -88,9 +88,10 @@ function shaft() {
 }
 
 function start() {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setClearColor(0x000000);
+  // transparent, so the giant wordmark behind the canvas shows through
+  renderer.setClearColor(0x000000, 0);
   const canvas = renderer.domElement;
   canvas.className = 'hero__canvas';
   canvas.setAttribute('aria-hidden', 'true');

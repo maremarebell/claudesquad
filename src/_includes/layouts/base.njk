@@ -12,7 +12,7 @@
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body class="page">
@@ -25,13 +25,13 @@
       <nav class="nav">
         <ul class="nav__list">
           <li class="nav__item">
-            <a href="/here/" class="nav__link">Log in</a>
+            <a href="/here/" class="nav__link" id="nav-login"{% if page.url == "/here/" %} aria-current="page"{% endif %}>Log in</a>
           </li>
           <li class="nav__item">
-            <a href="/calendar" class="nav__link">Calendar</a>
+            <a href="/calendar/" class="nav__link"{% if page.url == "/calendar/" %} aria-current="page"{% endif %}>Calendar</a>
           </li>
           <li class="nav__item">
-            <a href="/members" class="nav__link">Members</a>
+            <a href="/members/" class="nav__link"{% if "/members/" in page.url %} aria-current="page"{% endif %}>Members</a>
           </li>
         </ul>
       </nav>
@@ -51,12 +51,19 @@
 
   <footer class="footer">
     <div class="footer__container">
-      <p class="footer__text">Make No Mistakes.</p>
-      <p class="footer__text footer__text--muted">&copy; 2026 Claude Squad</p>
+      <p class="footer__mark" aria-hidden="true">Make No Mistakes.</p>
+      <p class="footer__meta"><span>&copy; 2026 Claude Squad</span><span>NYC</span></p>
     </div>
   </footer>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    // Supabase keeps the session under sb-<project>-auth-token, so the nav can tell
+    // a signed-in member without loading the client
+    try {
+      if (Object.keys(localStorage).some(function (k) { return /^sb-.*-auth-token$/.test(k); })) {
+        document.getElementById('nav-login').textContent = 'Check in';
+      }
+    } catch (e) {}
   </script>
 </body>
 </html>

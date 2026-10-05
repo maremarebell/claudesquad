@@ -4,22 +4,24 @@ title: Home
 ---
 
 <div class="hero">
-  <img src="/images/logo.jpg" alt="Claude Squad, Make No Mistakes" class="hero__logo">
+  <h1 class="hero__title"><span>Claude</span><span>Squad</span></h1>
+  <img src="/images/logo.jpg" alt="Make No Mistakes" class="hero__logo">
 
-  <div class="hero__overlay">
-    <h1 class="hero__title">Claude<br>Squad</h1>
+  <div class="hero__hud">
+    <span class="hero__tag">[ CS/01 ] NYC</span>
+    <span class="hero__tag hero__tag--right">40.7128°N 74.0060°W</span>
 
     {% if nextEvent %}
-      <div class="hero__meetup">
-        <span class="hero__label">Next Meetup</span>
+      <div class="hero__meetup ticks">
+        <span class="hero__label">[ Next Meetup ] <b id="tminus" data-date="{{ nextEvent.date }}"></b></span>
         <span class="hero__event">{{ nextEvent.title }}</span>
         <span class="hero__date">{{ nextEvent.dateLabel }}</span>
         {% if nextEvent.partiful %}
           <a href="{{ nextEvent.partiful }}" target="_blank" rel="noopener" class="hero__cta">RSVP on Partiful <span aria-hidden="true">→</span></a>
         {% else %}
-          <span class="hero__note">Partiful link coming soon, join the <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener">WhatsApp group</a> for details</span>
+          <a href="/calendar/" class="hero__cta">Calendar <span aria-hidden="true">→</span></a>
         {% endif %}
-        <a href="/here/" class="hero__cta">Check in <span aria-hidden="true">→</span></a>
+        <a href="/here/" class="hero__cta">Log in / Check in <span aria-hidden="true">→</span></a>
       </div>
     {% endif %}
 
@@ -27,23 +29,33 @@ title: Home
   </div>
 </div>
 
+<script>
+  // days to the next meetup, counted in New York
+  (function () {
+    var el = document.getElementById('tminus');
+    if (!el) return;
+    var today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    var days = Math.round((Date.parse(el.dataset.date) - Date.parse(today)) / 864e5);
+    el.textContent = days === 0 ? 'TODAY' : 'T-' + days + (days === 1 ? ' DAY' : ' DAYS');
+  })();
+</script>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.180.0/build/three.module.js" } }
 </script>
 <script type="module" src="/js/hero.js"></script>
 
 <div class="content">
-  <h2>What is Claude Squad?</h2>
-  <p>We are NYC's most elite fitness and computing club. We set PRs while we push PRs.
-  We burn tokens while we burn calories. We friendshipmog and tokenmaxx.</p>
+  <h2><span class="num">01</span>What is Claude Squad?</h2>
+  <p>We are <mark>NYC's most elite fitness and computing club</mark>. <mark>We set PRs while we push PRs.</mark>
+  We burn tokens while we burn calories. We <mark>friendshipmog and tokenmaxx</mark>.</p>
   <p>More specifically, we meet up ~every other week to prompt, lift, and friendshipmog everyone else in the area
   in matching tanks. When the weather is nice, we meet outside for calisthenics, otherwise we meet at the weights in Vital.</p>
-  <p>Everyone is welcome, whatever your skill level with working out and/or AI. It's all
+  <p><mark>Everyone is welcome</mark>, whatever your skill level with working out and/or AI. It's all
   better with a squad!</p>
 </div>
 
 <div class="gallery">
-  <h2>Photos</h2>
+  <h2><span class="num">02</span>Photos</h2>
   {% set photos = collections.photo | reverse %}
   {% if photos.length %}
     <div class="gallery__grid">

@@ -33,7 +33,8 @@ npm run build   # outputs to _site/
 ## Design system
 
 - Colors (`:root` in `styles.css`): `--site-bg: #000000` (sampled exactly from `logo.jpg`'s background — keep it pure black, don't drift back to `#0b0b0b`), `--accent: #d9835f` (terracotta from the logo), `--ink` / `--ink-muted` for text, `--card-bg` / `--border` for panels.
-- Fonts: `Press Start 2P` (pixel, Google Fonts) for headings/h1/h2/logo wordmark/nav brand; `Open Sans` for everything else (body copy, calendar, footer, tooltips). Loaded together in one `<link>` in `base.njk`.
+- Fonts: `Press Start 2P` (`--pixel`) for headings/h1/h2/wordmarks; `JetBrains Mono` (`--mono`) uppercase and letterspaced for every small label: nav, buttons, dates, metadata, section numbers; `Open Sans` for body paragraphs. Loaded together in one `<link>` in `base.njk`.
+- Look: industrial/terminal. No border-radius anywhere (reset sets it to 0), 1px `--rule` hairlines to divide things, `.ticks` for corner registration marks, `<mark>` for the accent highlighter that swipes in on scroll, `.num` for section numbers (`01 /`). Fixed grain and two page-height hairlines live on `.page::before/::after`. Buttons are square accent blocks that invert to `--ink` on hover.
 - `h1`/`h2`/`.page-title` all share the same Press Start 2P look — intentional, keep new headings consistent with that rather than introducing a third heading style.
 - Images: `src/images/logo.jpg` is the full lockup (pig + "MAKE NO MISTAKES" tagline) used in the homepage hero. `src/images/logomark.jpg` is the cropped pig-only mark used in the header and as the favicon source. `src/images/favicon/` was generated from `logomark.jpg` (cropped, background keyed transparent) — regenerate from that same source if the mark ever changes.
 
