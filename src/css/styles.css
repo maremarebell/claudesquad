@@ -94,9 +94,8 @@ mark {
   min-height: 100vh;
 }
 
-/* two hairlines down the full page, and a fixed film grain over everything */
-.page::before,
-.page::after {
+/* two hairlines down the full page */
+.page::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -109,12 +108,6 @@ mark {
     linear-gradient(var(--rule), var(--rule)) 6% 0 / 1px 100% no-repeat,
     linear-gradient(var(--rule), var(--rule)) 94% 0 / 1px 100% no-repeat;
   opacity: 0.5;
-}
-
-.page::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  opacity: 0.07;
-  mix-blend-mode: overlay;
 }
 
 /* Topbar (site-wide, under the nav): hazard stripes either side */
@@ -286,9 +279,6 @@ h1,
 }
 
 h2 {
-  display: flex;
-  align-items: baseline;
-  gap: 16px;
   font-family: var(--pixel);
   font-size: clamp(16px, 2.4vw, 22px);
   line-height: 1.4;
@@ -296,20 +286,6 @@ h2 {
   padding-bottom: 14px;
   margin-bottom: 24px;
   border-bottom: 1px solid var(--rule);
-}
-
-/* section index, set like a part number */
-.num {
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.08em;
-}
-
-.num::after {
-  content: ' /';
-  color: var(--ink-muted);
 }
 
 .page-subtitle {
@@ -370,6 +346,10 @@ h2 {
 
 .hero[data-three] .hero__logo {
   display: none;
+}
+
+.hero[data-three] {
+  cursor: crosshair;
 }
 
 .hero__canvas {
@@ -654,6 +634,7 @@ h2 {
 }
 
 .here__score {
+  position: relative;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -676,6 +657,39 @@ h2 {
 
 @keyframes here-pop {
   50% { transform: scale(1.25); }
+}
+
+.here__plus {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--pixel);
+  font-size: 20px;
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.here__px {
+  position: absolute;
+  left: 36px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.here__px:nth-child(3n) {
+  background: var(--ink);
+}
+
+.here__board li.is-you span::after {
+  content: ' (you)';
+  color: var(--ink-muted);
+}
+
+.here__board li.is-you:first-child span::after {
+  color: inherit;
 }
 
 .here__label {

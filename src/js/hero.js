@@ -133,6 +133,7 @@ function start() {
   }));
   scene.add(debris);
 
+  const clock = new THREE.Clock();
   const pointer = new THREE.Vector2(9, 9);
   const target = new THREE.Vector3(99, 99, 99);
   const ray = new THREE.Raycaster();
@@ -142,6 +143,17 @@ function start() {
     pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   });
   hero.addEventListener('pointerleave', () => pointer.set(9, 9));
+
+  // tap the stage and the pig does a rep: a press, a ring flare, and a shockwave
+  // through the debris. The corner tag keeps count.
+  let repAt = -10, reps = 0;
+  const tag = hero.querySelector('.hero__tag');
+  hero.addEventListener('pointerdown', e => {
+    if (REDUCED || e.target.closest('a')) return;
+    repAt = clock.getElapsedTime();
+    reps += 1;
+    tag.textContent = `[ REPS ${String(reps).padStart(2, '0')} ] NYC`;
+  });
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -165,14 +177,22 @@ function start() {
     camera.updateProjectionMatrix();
   }
 
+  const REP = 0.7;
+  const lights = [upper.children[2], lower.children[2]];
+
   function frame(t) {
+    const k = (t - repAt) / REP;
+    const flare = k >= 0 && k < 1 ? 1 - k : 0;
+    const lift = k >= 0 && k < 1 ? Math.sin(Math.PI * k) ** 2 * 0.35 : 0;
+
     // camera never stops: a slow sway around the front of the pig
     const d = camera.userData.dist;
     const az = Math.sin(t * 0.12) * 0.55;
     camera.position.set(Math.sin(az) * d, 0.4 + Math.sin(t * 0.2) * 0.3, Math.cos(az) * d);
     camera.lookAt(0, 0, 0);
 
-    pig.position.y = Math.sin(t * 0.8) * 0.06;
+    pig.position.y = Math.sin(t * 0.8) * 0.06 + lift;
+    lights.forEach(l => { l.intensity = 12 + 40 * flare; });
     pig.rotation.y = Math.sin(t * 0.3) * 0.25;
     upper.rotation.z = t * 0.15;
     lower.rotation.z = -t * 0.2;
@@ -188,6 +208,7 @@ function start() {
       away.subVectors(p, target);
       const dist = away.length();
       const want = dist < 1.2 ? away.normalize().multiplyScalar((1.2 - dist) * 0.9) : away.set(0, 0, 0);
+      if (flare) want.addScaledVector(p, flare * 0.35);
       sd.push.lerp(want, 0.08);
       p.add(sd.push);
       e.set(sd.spin.x * t, sd.spin.y * t, sd.spin.z * t);
@@ -206,7 +227,6 @@ function start() {
   addEventListener('resize', () => { fit(); if (REDUCED) frame(0); });
   if (REDUCED) return;
 
-  const clock = new THREE.Clock();
   const loop = () => frame(clock.getElapsedTime());
   new IntersectionObserver(([entry]) => renderer.setAnimationLoop(entry.isIntersecting ? loop : null)).observe(hero);
 }

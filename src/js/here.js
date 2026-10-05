@@ -82,6 +82,7 @@ async function renderBoard(user) {
     .sort((a, b) => b.points - a.points)
     .map(({ member, points }) => {
       const li = document.createElement('li');
+      if (member.id === user.id) li.className = 'is-you';
       li.append(avatar(member), Object.assign(document.createElement('span'), { textContent: member.name }),
         Object.assign(document.createElement('b'), { textContent: `${points} pts` }));
       return li;
@@ -99,18 +100,41 @@ async function renderBoard(user) {
   return present.some(m => m.id === user.id);
 }
 
+// Pixels fly off the points readout. Round-number meetups get a bigger burst.
+function burst(big) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const host = $('.here__score');
+  const plus = Object.assign(document.createElement('span'), { className: 'here__plus', textContent: `+${POINTS_PER_MEETUP}` });
+  host.append(plus);
+  plus.animate([{ transform: 'translateY(0)', opacity: 1 }, { transform: 'translateY(-60px)', opacity: 0 }],
+    { duration: 900, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => plus.remove();
+  for (let i = 0; i < (big ? 48 : 20); i++) {
+    const px = Object.assign(document.createElement('i'), { className: 'here__px' });
+    host.append(px);
+    const a = Math.random() * Math.PI * 2;
+    const d = 60 + Math.random() * (big ? 220 : 120);
+    px.animate([
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d}px) scale(0)`, opacity: 1 },
+    ], { duration: 500 + Math.random() * 500, easing: 'cubic-bezier(.1,.7,.3,1)' }).onfinish = () => px.remove();
+  }
+}
+
 async function checkIn(user) {
   const { error } = await db.from('checkins').insert({ user_id: user.id, event_date: today });
   if (error && error.code !== '23505') return say(`Check-in failed: ${error.message}`);
   buzz();
   root.classList.add('here--bumped');
-  say(`You're in. +${POINTS_PER_MEETUP} points.`);
   show('#here-bump', false);
   await renderBoard(user);
+  const n = Number($('#here-points').textContent) / POINTS_PER_MEETUP;
+  say(`Meetup #${n}. +${POINTS_PER_MEETUP} points.`);
+  burst([5, 10, 25, 50, 100].includes(n));
 }
 
-// A friendshipmog is three hard jolts inside a second.
-function listenForShake(onShake) {
+// A friendshipmog is three hard jolts inside a second. One jolt spans several
+// motion samples, so samples within 150ms of the last counted hit are ignored.
+function listenForShake(onShake, onHit) {
   let hits = [];
   const onMotion = e => {
     const a = e.accelerationIncludingGravity;
@@ -118,7 +142,9 @@ function listenForShake(onShake) {
     const force = Math.hypot(a.x, a.y, a.z) - 9.81;
     if (force < 14) return;
     const now = performance.now();
+    if (now - (hits[hits.length - 1] || 0) < 150) return;
     hits = hits.filter(t => now - t < 1000).concat(now);
+    onHit(hits.length);
     if (hits.length >= 3) {
       removeEventListener('devicemotion', onMotion);
       onShake();
@@ -141,7 +167,13 @@ async function armBump(user) {
   root.classList.add('here--armed');
   $('#here-bump-btn').textContent = 'Shake it';
   say('Shake your phone to friendshipmog.');
-  listenForShake(() => checkIn(user));
+  const btn = $('#here-bump-btn');
+  listenForShake(() => checkIn(user), n => {
+    // each counted jolt answers back, so you know the shakes are landing
+    if (navigator.vibrate) navigator.vibrate(25);
+    btn.textContent = `${n} / 3`;
+    btn.animate([{ transform: 'rotate(-4deg) scale(1.04)' }, { transform: 'none' }], { duration: 180 });
+  });
 }
 
 async function render(session) {

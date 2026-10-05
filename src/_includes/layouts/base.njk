@@ -57,6 +57,8 @@
   </footer>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    console.log('%cMAKE NO MISTAKES.', 'font: 16px "Press Start 2P", monospace; color: #d9835f; background: #000; padding: 8px');
+    console.log('Reading the source? Check in at a meetup and PR yourself onto the site: {{ site.repo }}');
     // Supabase keeps the session under sb-<project>-auth-token, so the nav can tell
     // a signed-in member without loading the client
     try {
