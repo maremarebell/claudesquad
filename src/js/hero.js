@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 
 const hero = document.querySelector('.hero');
-const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const ACCENT = 0xd9835f;
 const GLOW = 0xffc9a8;
 
@@ -36,9 +36,22 @@ function buildPig() {
   PIG.forEach((row, r) => [...row].forEach((ch, c) => {
     if (ch === '#') cells.push([(c - (row.length - 1) / 2) * VOXEL, ((PIG.length - 1) / 2 - r) * VOXEL]);
   }));
+  // One bevelled voxel, instanced across the logo. The edges catch the ring light.
+  const half = VOXEL * 0.4;
+  const shape = new THREE.Shape();
+  shape.moveTo(-half, -half);
+  shape.lineTo(half, -half);
+  shape.lineTo(half, half);
+  shape.lineTo(-half, half);
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: VOXEL * 1.4, steps: 1, bevelEnabled: true,
+    bevelSegments: 1, bevelSize: VOXEL * 0.07, bevelThickness: VOXEL * 0.07,
+  });
+  geometry.translate(0, 0, -VOXEL * 0.7);
   const mesh = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(VOXEL * 0.94, VOXEL * 0.94, VOXEL * 1.6),
-    new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.5, emissive: ACCENT, emissiveIntensity: 0.35 }),
+    geometry,
+    new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.38, metalness: 0.18, emissive: ACCENT, emissiveIntensity: 0.08 }),
     cells.length,
   );
   const m = new THREE.Matrix4();
@@ -49,15 +62,22 @@ function buildPig() {
 function ring(radius) {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.012, 8, 200),
+    new THREE.TorusGeometry(radius, 0.009, 8, 160),
     new THREE.MeshBasicMaterial({ color: GLOW, toneMapped: false }),
   ));
-  // a wide faint tube around the line reads as glow without postprocessing
+  // Two faint shoulders soften the glow without a full-screen bloom pass.
   g.add(new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.05, 8, 200),
-    new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }),
+    new THREE.TorusGeometry(radius, 0.028, 8, 160),
+    new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
   ));
-  const light = new THREE.PointLight(GLOW, 12, 0, 1.4);
+  g.add(new THREE.Mesh(
+    new THREE.TorusGeometry(radius, 0.075, 8, 160),
+    new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.025, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+  ));
+  const light = new THREE.PointLight(GLOW, 8, 0, 2);
+  // Positive local Y becomes positive world Z, facing the camera.
+  light.position.set(0, radius, 0);
+  g.userData.light = light;
   g.add(light);
   return g;
 }
@@ -81,7 +101,7 @@ function shaft() {
   g.fillRect(0, 0, 64, 256);
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(2.4, 7),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.35 }),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.14, toneMapped: false }),
   );
   mesh.position.set(0, 1.2, -1);
   return mesh;
@@ -90,15 +110,20 @@ function shaft() {
 function start() {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   // transparent, so the giant wordmark behind the canvas shows through
   renderer.setClearColor(0x000000, 0);
   const canvas = renderer.domElement;
   canvas.className = 'hero__canvas';
-  canvas.setAttribute('aria-hidden', 'true');
+  canvas.tabIndex = 0;
+  canvas.setAttribute('role', 'button');
+  canvas.setAttribute('aria-label', 'Make the 3D pig do a rep');
+  canvas.setAttribute('aria-keyshortcuts', 'Enter Space');
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.22));
   scene.fog = new THREE.Fog(0x000000, 1, 2);
   scene.add(shaft());
 
@@ -112,15 +137,12 @@ function start() {
   lower.position.y = -1.25;
   lower.rotation.x = Math.PI / 2 - 0.35;
   scene.add(upper, lower);
-  // the ring lights sit on the ring's front edge so the pig is lit from them
-  upper.children[2].position.set(0, -1.6, 0);
-  lower.children[2].position.set(0, -1.2, 0);
 
   // debris: a loose spiral of small cubes
   const COUNT = 160;
   const debris = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshStandardMaterial({ color: 0x3a2a22, roughness: 0.8 }),
+    new THREE.MeshStandardMaterial({ color: 0x4b3024, roughness: 0.65, metalness: 0.12 }),
     COUNT,
   );
   const seeds = Array.from({ length: COUNT }, (_, i) => ({
@@ -133,7 +155,8 @@ function start() {
   }));
   scene.add(debris);
 
-  const clock = new THREE.Clock();
+  let elapsed = 0, startedAt = 0, running = false, visible = false, lost = false;
+  const time = () => elapsed + (running ? (performance.now() - startedAt) / 1000 : 0);
   const pointer = new THREE.Vector2(9, 9);
   const target = new THREE.Vector3(99, 99, 99);
   const ray = new THREE.Raycaster();
@@ -148,11 +171,17 @@ function start() {
   // through the debris. The corner tag keeps count.
   let repAt = -10, reps = 0;
   const tag = hero.querySelector('.hero__tag');
-  hero.addEventListener('pointerdown', e => {
-    if (REDUCED || e.target.closest('a')) return;
-    repAt = clock.getElapsedTime();
+  function rep() {
+    if (motion.matches || lost) return;
+    repAt = time();
     reps += 1;
     tag.textContent = `[ REPS ${String(reps).padStart(2, '0')} ] NYC`;
+  }
+  canvas.addEventListener('click', rep);
+  canvas.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (!e.repeat) rep();
   });
 
   const m = new THREE.Matrix4();
@@ -166,19 +195,18 @@ function start() {
     const w = hero.clientWidth, h = hero.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // keep a 5.4-unit wide by 4.6-unit tall frame inside the view
+    // The tilted upper ring and its glow fit a sphere of radius 2.9. Fit it
+    // in BOTH axes, including portrait phones and every camera angle.
     const half = THREE.MathUtils.degToRad(camera.fov / 2);
-    const distH = 2.3 / Math.tan(half);
-    // on a phone held upright let the rings run off the edges so the pig stays big
-    const distW = (camera.aspect < 0.8 ? 1.9 : 2.7) / (Math.tan(half) * camera.aspect);
-    camera.userData.dist = Math.max(distH, distW) + 1;
+    const horizontal = Math.atan(Math.tan(half) * camera.aspect);
+    camera.userData.dist = 2.9 / Math.sin(Math.min(half, horizontal));
     scene.fog.near = camera.userData.dist;
     scene.fog.far = camera.userData.dist + 6;
     camera.updateProjectionMatrix();
   }
 
   const REP = 0.7;
-  const lights = [upper.children[2], lower.children[2]];
+  const lights = [upper.userData.light, lower.userData.light];
 
   function frame(t) {
     const k = (t - repAt) / REP;
@@ -187,15 +215,15 @@ function start() {
 
     // camera never stops: a slow sway around the front of the pig
     const d = camera.userData.dist;
-    const az = Math.sin(t * 0.12) * 0.55;
-    camera.position.set(Math.sin(az) * d, 0.4 + Math.sin(t * 0.2) * 0.3, Math.cos(az) * d);
+    const az = Math.sin(t * 0.12) * 0.24;
+    camera.position.set(Math.sin(az) * d, 0.2 + Math.sin(t * 0.2) * 0.12, Math.cos(az) * d);
     camera.lookAt(0, 0, 0);
 
     pig.position.y = Math.sin(t * 0.8) * 0.06 + lift;
-    lights.forEach(l => { l.intensity = 12 + 40 * flare; });
-    pig.rotation.y = Math.sin(t * 0.3) * 0.25;
-    upper.rotation.z = t * 0.15;
-    lower.rotation.z = -t * 0.2;
+    lights.forEach(l => { l.intensity = 8 + 10 * flare; });
+    pig.rotation.y = Math.sin(t * 0.3) * 0.12;
+    upper.rotation.x = Math.PI / 2 + 0.15 + Math.sin(t * 0.18) * 0.06;
+    lower.rotation.x = Math.PI / 2 - 0.35 + Math.sin(t * 0.15) * 0.06;
 
     plane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(p).negate(), new THREE.Vector3());
     ray.setFromCamera(pointer, camera);
@@ -224,11 +252,43 @@ function start() {
   frame(0);
   hero.dataset.three = '';
 
-  addEventListener('resize', () => { fit(); if (REDUCED) frame(0); });
-  if (REDUCED) return;
-
-  const loop = () => frame(clock.getElapsedTime());
-  new IntersectionObserver(([entry]) => renderer.setAnimationLoop(entry.isIntersecting ? loop : null)).observe(hero);
+  function updateMotion() {
+    const animate = !motion.matches && !lost && visible && !document.hidden;
+    if (running) elapsed = time();
+    running = animate;
+    if (running) startedAt = performance.now();
+    renderer.setAnimationLoop(running ? () => frame(time()) : null);
+    canvas.setAttribute('aria-disabled', String(motion.matches || lost));
+  }
+  motion.addEventListener('change', () => {
+    repAt = -10;
+    updateMotion();
+    if (!lost) frame(motion.matches ? 0 : time());
+  });
+  document.addEventListener('visibilitychange', updateMotion);
+  canvas.addEventListener('webglcontextlost', e => {
+    e.preventDefault();
+    lost = true;
+    updateMotion();
+    delete hero.dataset.three;
+    canvas.hidden = true;
+  });
+  canvas.addEventListener('webglcontextrestored', () => {
+    lost = false;
+    fit();
+    frame(motion.matches ? 0 : time());
+    canvas.hidden = false;
+    hero.dataset.three = '';
+    updateMotion();
+  });
+  addEventListener('resize', () => {
+    fit();
+    if (!running && !lost) frame(motion.matches ? 0 : time());
+  });
+  new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    updateMotion();
+  }).observe(hero);
 }
 
 try {
