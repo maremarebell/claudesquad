@@ -84,7 +84,7 @@ a {
 
 /* Header */
 .header {
-  background-color: #000;
+  background-color: var(--site-bg);
   border-bottom: 1px solid var(--border);
   padding: 16px 0;
 }
@@ -257,7 +257,7 @@ h2 {
 /* Hero (homepage logo) */
 .hero {
   width: 100%;
-  background: #000;
+  background: var(--site-bg);
   display: flex;
   justify-content: center;
   padding: 32px var(--page-padding-x);
@@ -416,7 +416,7 @@ h2 {
 
 /* Footer */
 .footer {
-  background-color: #000;
+  background-color: var(--site-bg);
   color: var(--accent);
   padding: 30px 20px;
   text-align: center;
