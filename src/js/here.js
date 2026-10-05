@@ -1,7 +1,7 @@
 // Check-in: sign in with GitHub, then on a meetup day shake the phone. The pig
 // does a rep for every shake, and the third one checks you in.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { SHAKES, nyToday, tally, shakeCounter } from './checkin.js';
+import { SHAKES, nyToday, tally, shakeCounter, userChanges } from './checkin.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
@@ -57,6 +57,8 @@ const configured = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
 const db = configured ? createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
 let user = null;
 let checkingIn = false;
+// the live shake listener and its fallback timer, so sign-out can stop them
+let disarm = () => {};
 
 // Android buzzes through vibrate(). iOS Safari has no vibrate, but toggling a
 // switch-style checkbox through its label plays the system haptic.
@@ -159,12 +161,16 @@ function burst(big) {
 }
 
 async function checkIn() {
-  if (checkingIn) return;
+  if (checkingIn || !user) return;
+  // a page left open past midnight would otherwise check in on a non-meetup day
+  if (!eventOn(nyToday())) return render({ user });
   checkingIn = true;
+  disarm();
   const { error } = await db.from('checkins').insert({ user_id: user.id, event_date: nyToday() });
+  // 23505 is Postgres unique_violation: you were already in today
   if (error && error.code !== '23505') {
     checkingIn = false;
-    return say(`Check-in failed: ${error.message}`);
+    return tapInstead(`Check-in failed: ${error.message}. Tap to try again.`);
   }
   buzz([60, 40, 120]);
   root.classList.remove('here--armed');
@@ -219,19 +225,30 @@ async function arm() {
     rep(n);
     pips.forEach((p, i) => p.classList.toggle('on', i < n));
     if (n >= SHAKES) {
-      removeEventListener('devicemotion', onMotion);
       checkIn();
     }
   };
   addEventListener('devicemotion', onMotion);
   // sensors blocked in site settings never send an event: hand the tap back
-  setTimeout(() => {
+  const silent = setTimeout(() => {
     if (!heard && !checkingIn) tapInstead("Your phone isn't sending motion, so tap to check in instead.");
   }, 3000);
+  disarm = () => {
+    removeEventListener('devicemotion', onMotion);
+    clearTimeout(silent);
+  };
 }
 
 async function render(session) {
   user = session?.user || null;
+  disarm();
+  checkingIn = false;
+  root.classList.remove('here--armed', 'here--checked-in');
+  const btn = $('#here-checkin-btn');
+  btn.hidden = false;
+  btn.disabled = false;
+  btn.innerHTML = 'Friendship&shy;mog';
+  root.querySelectorAll('.here__pips i').forEach(p => p.classList.remove('on'));
   show('#here-signin', !user);
   show('#here-app', !!user);
   $('#here-title').textContent = user ? 'Check in' : 'Log in';
@@ -266,14 +283,10 @@ if (!configured) {
   $('#here-signout').onclick = () => db.auth.signOut();
   $('#here-checkin-btn').onclick = arm;
 
-  // The client fires this on every token refresh; only re-render when the user
-  // changes. Signed out is a real first state, so `last` starts on neither.
-  let last = 'none yet';
+  // fires on every token refresh too; only a different user re-renders
+  const changed = userChanges();
   db.auth.onAuthStateChange((_event, session) => {
-    const id = session?.user?.id ?? null;
-    if (id === last) return;
-    last = id;
-    render(session);
+    if (changed(session)) render(session);
   });
 
   // live: a new face appears as soon as someone else checks in. Inserts land

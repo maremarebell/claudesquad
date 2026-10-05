@@ -23,4 +23,4 @@ It needs a Supabase project. One-time setup:
 4. Authentication > URL Configuration: set the site URL, and add `<site>/here/` and `http://localhost:8080/here/` to Redirect URLs. Sign-in returns to `/here/`; without it on the list Supabase sends people to `/`, which doesn't save the session.
 5. Put the project URL and anon key in `src/_data/site.json` (`supabaseUrl`, `supabaseAnonKey`). The anon key is public by design; the row policies in the schema are what protect the data.
 
-Until then `/here/` says it isn't connected.
+Until then `/here/` says "Check-in isn't open yet."

@@ -373,6 +373,7 @@ h2 {
   left: 50%;
   top: 50%;
   width: min(420px, 80vw);
+  height: auto;
   transform: translate(-50%, -50%);
   z-index: var(--z-scene);
 }

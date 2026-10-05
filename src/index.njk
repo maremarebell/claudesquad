@@ -5,7 +5,7 @@ title: Home
 
 <div class="hero">
   <h1 class="hero__title"><span>Claude</span><span>Squad</span></h1>
-  <img src="/images/logo.jpg" alt="Make No Mistakes" class="hero__logo">
+  <img src="/images/logo-840.png" width="840" height="600" alt="Make No Mistakes" class="hero__logo">
 
   <div class="hero__hud">
     <span class="hero__tag">[ CS/01 ] NYC</span>
@@ -40,8 +40,11 @@ title: Home
   })();
 </script>
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.180.0/build/three.module.js" } }
+{ "imports": { "three": "https://unpkg.com/three@0.180.0/build/three.module.min.js" } }
 </script>
+<!-- three imports its core: fetch both now instead of one after the other -->
+<link rel="modulepreload" href="https://unpkg.com/three@0.180.0/build/three.module.min.js" crossorigin>
+<link rel="modulepreload" href="https://unpkg.com/three@0.180.0/build/three.core.min.js" crossorigin>
 <script type="module" src="/js/hero.js"></script>
 
 <div class="content">

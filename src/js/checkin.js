@@ -34,3 +34,18 @@ export function shakeCounter({ need = SHAKES, within = 1000, gap = 150, threshol
     return Math.min(hits.length, need);
   };
 }
+
+// Supabase fires auth events on every token refresh. This says whether the
+// signed-in user actually changed. Signed out (null) is a real first state,
+// so the first call always counts, whoever it is.
+export function userChanges() {
+  let last;
+  let seen = false;
+  return session => {
+    const id = session?.user?.id ?? null;
+    if (seen && id === last) return false;
+    seen = true;
+    last = id;
+    return true;
+  };
+}
