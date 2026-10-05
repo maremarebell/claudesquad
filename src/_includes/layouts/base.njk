@@ -8,14 +8,6 @@
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body class="page">
-  <div class="topbar">
-    {% if site.whatsappLink %}
-      <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener" class="topbar__link">Join the WhatsApp group to stay up to date →</a>
-    {% else %}
-      <p class="topbar__text">Join the WhatsApp group to stay up to date</p>
-    {% endif %}
-  </div>
-
   <header class="header">
     <div class="header__container">
       <a href="/" class="header__brand">
@@ -31,6 +23,17 @@
       </nav>
     </div>
   </header>
+
+  <div class="topbar">
+    <div class="topbar__inner">
+      <p class="topbar__text">Our WhatsApp has the most timely info &amp; important thoughts</p>
+      {% if site.whatsappLink %}
+        <a href="{{ site.whatsappLink }}" target="_blank" rel="noopener" class="topbar__button">Join the WhatsApp</a>
+      {% else %}
+        <span class="topbar__button topbar__button--disabled">Join the WhatsApp</span>
+      {% endif %}
+    </div>
+  </div>
 
   <main class="main">
     {{ content | safe }}
