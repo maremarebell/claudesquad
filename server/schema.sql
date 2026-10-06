@@ -25,6 +25,16 @@ create table if not exists checkins (
   primary key (member_id, event_date)
 );
 
+-- What people are working on: a line and an optional link, posted from the site.
+create table if not exists posts (
+  id bigint generated always as identity primary key,
+  member_id uuid not null references members on delete cascade,
+  body text not null check (length(body) between 1 and 280),
+  link text check (link ~ '^https?://'),
+  created_at timestamptz not null default now()
+);
+create index if not exists posts_created on posts (created_at desc);
+
 -- Locations live an hour, only to match bumps, and are never sent to anyone.
 create table if not exists bumps (
   id bigint generated always as identity primary key,

@@ -1,7 +1,8 @@
 // The check-in rules with no DOM or network in them, so Node can test them.
 
 export const SHAKES = 3;
-export const POINTS = { meetup: 10, pr: 20 };
+// One point per meetup attended, one per merged PR.
+export const POINTS = { meetup: 1, pr: 1 };
 
 // New York's calendar date. Moves together with POST /api/bump in
 // server/index.mjs, which dates check-ins in the same zone.

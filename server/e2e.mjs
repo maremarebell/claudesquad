@@ -11,7 +11,7 @@ const PORT = 10123;
 const API = `http://127.0.0.1:${PORT}`;
 const sql = q => execSync(`docker exec -i sq-pg psql -U postgres -tA`, { input: q, encoding: 'utf8' }).trim();
 
-sql('drop schema if exists claudesquad cascade; drop table if exists sessions, bumps, checkins, members cascade;');
+sql('drop schema if exists claudesquad cascade; drop table if exists posts, sessions, bumps, checkins, members cascade;');
 const server = spawn('node', [new URL('./index.mjs', import.meta.url).pathname], {
   env: { ...process.env, DATABASE_URL, PORT, SITE_URL: 'https://claudesquad.onrender.com' },
   stdio: ['ignore', 'pipe', 'inherit'],
@@ -99,6 +99,31 @@ await check('the site may call the API; other origins get no CORS header', async
   assert.equal(ok.headers.get('access-control-allow-origin'), 'https://claudesquad.onrender.com');
   const no = await call('/api/config', { origin: 'https://evil.example' });
   assert.equal(no.headers.get('access-control-allow-origin'), null);
+});
+
+await check('the leaderboard is public and counts only the dates asked for', async () => {
+  const r = await call(`/api/leaderboard?dates=${today}`);
+  assert.equal(r.status, 200);
+  const byName = Object.fromEntries(r.body.map(m => [m.name, m.meetups]));
+  assert.equal(byName.Ana, 1);
+  assert.equal(byName.Dee + byName.Eli, 2);
+  const none = await call('/api/leaderboard?dates=2000-01-01');
+  assert.ok(none.body.every(m => m.meetups === 0));
+});
+
+await check('members post what they work on; anyone reads it; only the author deletes it', async () => {
+  assert.equal((await call('/api/posts', { method: 'POST', body: { body: 'x' } })).status, 401);
+  const made = await call('/api/posts', { method: 'POST', token: ana.token, body: { body: 'Shader for the hero', link: 'https://github.com/x/y' } });
+  assert.equal(made.status, 200);
+  assert.equal((await call('/api/posts', { method: 'POST', token: ana.token, body: { body: 'again' } })).status, 429);
+  assert.equal((await call('/api/posts', { method: 'POST', token: ben.token, body: { body: 'x', link: 'javascript:alert(1)' } })).status, 400);
+  const feed = await call('/api/posts');
+  assert.equal(feed.body[0].body, 'Shader for the hero');
+  assert.equal(feed.body[0].member.name, 'Ana');
+  await call('/api/posts/delete', { method: 'POST', token: ben.token, body: { id: made.body.id } });
+  assert.equal((await call('/api/posts')).body.length, 1);
+  await call('/api/posts/delete', { method: 'POST', token: ana.token, body: { id: made.body.id } });
+  assert.equal((await call('/api/posts')).body.length, 0);
 });
 
 await check('signing out ends the session', async () => {

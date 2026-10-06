@@ -60,7 +60,7 @@ The projects page links each one to its open issues and to issues labelled `good
 
 ## Points
 
-Every merged pull request to this repo, or to any repo on the Projects page, is 20 points on the check-in leaderboard, as long as you joined with the same GitHub username. Meetups are 10.
+Every merged pull request to this repo, or to any repo on the Projects page, is 1 point on the leaderboard, as long as you joined with the same GitHub username. Each meetup you check in at is 1 point too.
 
 ## Add a gallery photo
 

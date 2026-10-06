@@ -8,6 +8,21 @@ permalink: /projects/
 <div class="content">
   <h1>Projects</h1>
 
+  <div>
+  <section class="working" id="working">
+    <h2 class="working__title">What are you working on?</h2>
+    <form class="working__form" hidden>
+      <textarea name="body" maxlength="280" rows="2" required placeholder="A line about it"></textarea>
+      <input name="link" type="url" inputmode="url" placeholder="Link (optional)">
+      <button class="here__btn" type="submit">Post</button>
+    </form>
+    <p class="working__login"><a class="here__btn" href="/here/">Log in to post</a></p>
+    <p class="working__status" role="status"></p>
+    <ol class="working__feed"></ol>
+  </section>
+  <script type="module" src="/js/working.js"></script>
+
+  <h2 class="projects__title">Projects</h2>
   <div class="projects">
     {% for project in collections.project | sort(false, false, "data.name") %}
       <article class="project">
@@ -33,4 +48,5 @@ permalink: /projects/
   <p class="projects__add">
     <a class="here__btn" href="{{ site.repo }}/new/main/src/projects?filename=your-project.md&value={{ newProject | urlencode }}" target="_blank" rel="noopener">Add a project</a>
   </p>
+  </div>
 </div>

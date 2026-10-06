@@ -56,6 +56,18 @@ title: Home
   better with a squad!</p>
 </div>
 
+<section class="content board" id="board">
+  <h2>Leaderboard</h2>
+  <div>
+    <p class="board__how">1 point for every meetup you check in at, 1 for every merged PR.</p>
+    <ol class="board__list"></ol>
+    <p class="board__status" role="status"></p>
+    <p class="board__cta"><a href="/here/">Check in</a> · <a href="/projects/">Find something to PR</a></p>
+  </div>
+</section>
+<script type="application/json" id="board-config">{{ { prRepos: prRepos, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
+<script type="module" src="/js/board.js"></script>
+
 <div class="gallery">
   <h2>Photos</h2>
   {% set photos = collections.photo | reverse %}

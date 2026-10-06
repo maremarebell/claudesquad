@@ -2,11 +2,11 @@
 // once it's set up), then on a meetup day shake your phone at the same time
 // as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
-import { SHAKES, POINTS, nyToday, tally, shakeCounter, countPRs, leaderboard } from './checkin.js';
+import { SHAKES, POINTS, nyToday, tally, shakeCounter, leaderboard } from './checkin.js';
+import { api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
-const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 const eventDates = new Set(cfg.events.map(e => e.date));
 const eventOn = date => cfg.events.find(e => e.date === date);
 const nextAfter = date => cfg.events.filter(e => e.date > date).sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -53,34 +53,14 @@ function drawPig() {
 
 drawPig();
 
-// The check-in server (server/ in this repo, on Render). The session token
-// lives on this phone only.
-const API = cfg.apiUrl;
-const TOKEN = 'squad-token';
-const store = {
-  get: () => { try { return localStorage.getItem(TOKEN); } catch { return null; } },
-  set: t => { try { t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN); } catch {} },
-};
-
+// A signed-out answer from the server takes the page back to the join form.
 async function api(path, body) {
-  const token = store.get();
-  let res;
   try {
-    res = await fetch(API + path, {
-      method: body ? 'POST' : 'GET',
-      headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
-      body: body && JSON.stringify(body),
-    });
-  } catch {
-    throw new Error("Can't reach the check-in server. Check your signal and try again.");
+    return await call(path, body);
+  } catch (e) {
+    if (e instanceof SignedOut) render(null);
+    throw e;
   }
-  const out = await res.json().catch(() => ({}));
-  if (res.status === 401) {
-    store.set(null);
-    render(null);
-  }
-  if (!res.ok) throw new Error(out.error || `Check-in server error ${res.status}`);
-  return out;
 }
 
 let user = null;
@@ -116,62 +96,15 @@ async function join(e) {
   }
 }
 
-function avatar(member) {
-  const img = document.createElement('img');
-  img.src = member.avatar_url;
-  img.alt = member.name;
-  img.title = member.name;
-  img.className = 'here__face';
-  return img;
-}
-
 // Redraws points, today's faces and the leaderboard. Returns how many meetups
 // you have and whether you are already in today. Only meetup dates are read,
 // so the row count grows with meetups, not with every check-in ever.
-// Merged PRs to the squad's repos, straight from GitHub's public search, so
-// nobody can type their way to PR points. Cached ten minutes per tab; if
-// GitHub is unreachable or rate-limited, PRs just don't count until it's back.
-async function mergedPRs() {
-  const key = 'squad-prs';
-  try {
-    const hit = JSON.parse(sessionStorage.getItem(key));
-    if (hit && Date.now() - hit.at < 600000) return new Map(hit.counts);
-  } catch {}
-  const q = ['is:pr', 'is:merged', ...cfg.prRepos.map(r => `repo:${r}`)].join(' ');
-  const items = [];
-  for (let page = 1; page <= 5; page++) {
-    const res = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&page=${page}`);
-    if (!res.ok) throw new Error(`GitHub ${res.status}`);
-    const body = await res.json();
-    items.push(...body.items);
-    if (items.length >= body.total_count || !body.items.length) break;
-  }
-  const counts = countPRs(items);
-  try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), counts: [...counts] })); } catch {}
-  return counts;
-}
-
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-// Points tick up to their new value instead of jumping.
-function countTo(el, to) {
-  const from = Number(el.textContent) || 0;
-  if (REDUCED.matches || from === to) return void (el.textContent = to);
-  const start = performance.now();
-  const step = now => {
-    const k = Math.min(1, (now - start) / 600);
-    el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
-    if (k < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-
 async function renderBoard() {
   const today = nyToday();
   const [data, members, prs] = await Promise.all([
     api(`/api/board?dates=${[...eventDates, today].join(',')}`),
     api('/api/members'),
-    mergedPRs().catch(() => new Map()),
+    mergedPRs(cfg.prRepos).catch(() => new Map()),
   ]);
 
   const { meetups, present } = tally(data, eventDates, today);
@@ -188,7 +121,7 @@ async function renderBoard() {
     const li = document.createElement('li');
     if (member.id === user.id) li.className = 'is-you';
     li.append(avatar(member), Object.assign(document.createElement('span'), { textContent: member.name }),
-      Object.assign(document.createElement('b'), { textContent: `${points} pts` }));
+      Object.assign(document.createElement('b'), { textContent: plural(points, 'pt') }));
     return li;
   }));
 
@@ -320,7 +253,7 @@ async function landed(names, wasIn) {
     root.classList.add('here--armed');
     return listen();
   }
-  say(`Bumped${who}. Meetup #${mine}, +${POINTS.meetup} points.`);
+  say(`Bumped${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}.`);
   burst([1, 5, 10, 25, 50, 100].includes(mine));
   show('#here-welcome', mine === 1);
 }
@@ -392,6 +325,8 @@ async function arm() {
 
 async function render(member) {
   user = member || null;
+  // lets the homepage leaderboard mark your row
+  try { user ? localStorage.setItem('squad-me', JSON.stringify(user.login)) : localStorage.removeItem('squad-me'); } catch {}
   disarm();
   checkingIn = false;
   root.classList.remove('here--armed', 'here--checked-in', 'here--waiting', 'here--motion', 'here--sleeping');

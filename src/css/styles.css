@@ -305,6 +305,19 @@ mark {
   .header__logo-img {
     height: 28px;
   }
+}
+
+/* the smallest phones (iPhone SE 1st gen, 320px): tighter still */
+@media (max-width: 340px) {
+  .nav__link {
+    padding: 0 2px;
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  .header__logo-img {
+    height: 22px;
+  }
 
   /* one line of topbar on a phone instead of two */
   .topbar {
@@ -1177,6 +1190,139 @@ h2 {
   }
 }
 
+/* Homepage leaderboard: ranked rows, a bar under each that grows to its share
+   of the leader's points, rows arriving one after another */
+.content p.board__how {
+  font-size: 16px;
+  color: var(--ink-muted);
+  margin-bottom: var(--space-md);
+}
+
+.board__list {
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.content .board__list li {
+  padding-left: 0;
+}
+
+.board__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5ch 40px 1fr auto;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.board__rank {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.board__face {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  object-fit: cover;
+  background: var(--card-bg);
+}
+
+.board__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.board__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board__detail {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.board__pts {
+  font-family: var(--pixel);
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.board__bar {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 3px;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.9s cubic-bezier(.2, .8, .2, 1);
+}
+
+.board--in .board__bar {
+  width: var(--w);
+}
+
+.board__face.is-pig,
+.working__face.is-pig,
+.here__face.is-pig {
+  object-fit: contain;
+  padding: 6px;
+}
+
+.board__row.is-you .board__name::after {
+  content: ' (you)';
+  font-weight: 400;
+  color: var(--ink-muted);
+}
+
+.board__row:first-child .board__face {
+  box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .board--in .board__row {
+    animation: row-in 0.5s calc(var(--i) * 70ms) both cubic-bezier(.2, .8, .2, 1);
+  }
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-16px); }
+}
+
+.board--still .board__bar {
+  transition: none;
+}
+
+.content p.board__status:empty {
+  display: none;
+}
+
+.content p.board__status {
+  padding: var(--space-md) 0;
+  color: var(--ink-muted);
+}
+
+.content p.board__cta {
+  margin-top: var(--space-md);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* Gallery: each cell's 1px shadow fills the 1px gap, so cells share one rule */
 .gallery__grid {
   display: grid;
@@ -1237,6 +1383,133 @@ h2 {
 }
 
 .gallery__empty code {
+  color: var(--accent);
+}
+
+/* What are you working on: the ask, a two-field form, then the feed */
+.working {
+  margin-bottom: var(--space-xl);
+}
+
+.content > div .working__title,
+.content .working__title,
+.content .projects__title {
+  position: static;
+  margin: 0 0 var(--space-sm);
+  padding: 0;
+  border: 0;
+}
+
+.working__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.working__form[hidden] {
+  display: none;
+}
+
+.working__form textarea,
+.working__form input {
+  padding: var(--space-xs);
+  border: 1px solid var(--rule);
+  background: var(--site-bg);
+  color: var(--ink);
+  font: 16px/1.5 var(--sans);
+  resize: vertical;
+}
+
+.working__form textarea:focus-visible,
+.working__form input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.working__form .here__btn,
+.working__login .here__btn {
+  width: auto;
+  align-self: flex-start;
+  gap: var(--space-md);
+}
+
+.content p.working__status:empty {
+  display: none;
+}
+
+.content p.working__status {
+  margin: var(--space-sm) 0;
+  color: var(--ink-muted);
+}
+
+.working__feed {
+  list-style: none;
+  margin-top: var(--space-md);
+}
+
+.content .working__feed li {
+  padding-left: 0;
+}
+
+.working__post {
+  display: grid;
+  grid-template-columns: 36px 1fr auto;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-top: 1px solid var(--rule);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .working__post:first-child {
+    animation: row-in 0.4s both cubic-bezier(.2, .8, .2, 1);
+  }
+}
+
+.working__face {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  object-fit: cover;
+}
+
+.content p.working__meta {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.working__meta b {
+  color: var(--ink);
+}
+
+.content p.working__text {
+  margin: 2px 0 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.working__link {
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.working__delete {
+  align-self: start;
+  min-height: 44px;
+  padding: 0 var(--space-2xs);
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font: 11px var(--mono);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.working__delete:hover {
   color: var(--accent);
 }
 
@@ -1334,6 +1607,55 @@ h2 {
 .projects__add .here__btn {
   width: auto;
   gap: var(--space-md);
+}
+
+/* Admin: one row per meetup, a link field each */
+.admin__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.admin__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.admin__when {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.admin__row input {
+  padding: var(--space-xs);
+  border: 1px solid var(--rule);
+  background: var(--site-bg);
+  color: var(--ink);
+  font: 16px var(--sans);
+}
+
+.admin__row input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.admin__form .here__btn {
+  width: auto;
+  align-self: flex-start;
+  gap: var(--space-md);
+}
+
+.admin__json {
+  max-height: 240px;
+  overflow: auto;
+  padding: var(--space-sm);
+  border: 1px solid var(--rule);
+  font: 12px/1.5 var(--mono);
+  white-space: pre;
 }
 
 /* Profile pages */

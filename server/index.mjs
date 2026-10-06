@@ -8,6 +8,10 @@
 //   GET  /api/members                                 -> [member]
 //   GET  /api/board?dates=2026-10-15,...              -> [{ event_date, members }]
 //   POST /api/bump            { lat, lng }            -> { matched, with }
+//   GET  /api/leaderboard?dates=...                   -> [{ ...member, meetups }]   (public)
+//   GET  /api/posts                                   -> latest 50 posts            (public)
+//   POST /api/posts           { body, link }          -> post
+//   POST /api/posts/delete    { id }                  -> {}   (your own only)
 //   GET  /api/config                                  -> { github }
 //
 // A bump is like the old Bump app: two members shaking within 20 seconds and
@@ -144,6 +148,51 @@ const routes = {
   'POST /api/signout': async req => {
     const token = (req.headers.authorization || '').replace(/^Bearer /, '');
     await db.query('delete from sessions where token_hash = $1', [hash(token)]);
+    return {};
+  },
+
+  // Public: names and GitHub avatars are already public on the site, and this
+  // only counts check-ins on the dates the site asks about (its meetups).
+  'GET /api/leaderboard': async (_req, _res, url) => {
+    const dates = (url.searchParams.get('dates') || '').split(',').filter(d => DATE.test(d)).slice(0, 400);
+    const { rows } = await db.query(
+      `select m.id, m.login, m.name, m.avatar_url,
+              count(c.event_date) filter (where c.event_date = any($1::date[]))::int as meetups
+       from members m left join checkins c on c.member_id = m.id
+       group by m.id order by m.created_at`, [dates]);
+    return rows;
+  },
+
+  'GET /api/posts': async () => {
+    const { rows } = await db.query(
+      `select p.id, p.body, p.link, p.created_at,
+              json_build_object('id', m.id, 'login', m.login, 'name', m.name, 'avatar_url', m.avatar_url) as member
+       from posts p join members m on m.id = p.member_id
+       order by p.created_at desc limit 50`);
+    return rows;
+  },
+
+  'POST /api/posts': async req => {
+    const me = await whoami(req);
+    const { body: text, link } = await body(req);
+    const clean = String(text || '').trim().slice(0, 280);
+    if (!clean) throw new Oops(400, 'Say what you\'re working on.');
+    const url = String(link || '').trim();
+    if (url && !/^https?:\/\/\S+$/.test(url)) throw new Oops(400, 'Links start with https://');
+    // a minute between posts, so nobody floods the page
+    const recent = await db.query(
+      "select 1 from posts where member_id = $1 and created_at > now() - interval '1 minute'", [me.id]);
+    if (recent.rows[0]) throw new Oops(429, 'Give it a minute before posting again.');
+    const { rows } = await db.query(
+      'insert into posts (member_id, body, link) values ($1, $2, $3) returning id, body, link, created_at',
+      [me.id, clean, url || null]);
+    return { ...rows[0], member: { id: me.id, login: me.login, name: me.name, avatar_url: me.avatar_url } };
+  },
+
+  'POST /api/posts/delete': async req => {
+    const me = await whoami(req);
+    const { id } = await body(req);
+    await db.query('delete from posts where id = $1 and member_id = $2', [Number(id) || 0, me.id]);
     return {};
   },
 

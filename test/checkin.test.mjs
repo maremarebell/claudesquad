@@ -93,5 +93,6 @@ test('the leaderboard adds meetups and PRs and drops members with nothing', () =
   const meetups = new Map([['u2', { meetups: 3 }]]);
   const prs = new Map([['iso', 2]]);
   const rows = leaderboard(members, meetups, prs);
-  assert.deepEqual(rows.map(r => [r.member.name, r.points]), [['Iso', 2 * POINTS.pr], ['Mare', 3 * POINTS.meetup]]);
+  assert.deepEqual(rows.map(r => [r.member.name, r.points]), [['Mare', 3 * POINTS.meetup], ['Iso', 2 * POINTS.pr]]);
+  assert.deepEqual(POINTS, { meetup: 1, pr: 1 });
 });
