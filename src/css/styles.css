@@ -704,6 +704,23 @@ h2 {
   outline: none;
 }
 
+/* install: last thing in the panel, quiet until it's useful */
+.here__install {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--rule);
+}
+
+.here__install-title {
+  margin-bottom: var(--space-xs);
+  font-family: var(--serif);
+  font-size: 20px;
+}
+
+#here-install-ios {
+  color: var(--ink-muted);
+}
+
 /* the pig stage: the logo pig on a little gym floor, waiting for shakes */
 .here__stage {
   position: relative;
@@ -726,11 +743,6 @@ h2 {
   overflow: visible;
 }
 
-.pig__body {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-}
-
 .pig__lid {
   fill: var(--accent);
   opacity: 0;
@@ -750,16 +762,12 @@ h2 {
   to { transform: translateY(-4px); }
 }
 
-/* checked in: happy eyes, the bar stays up */
+/* checked in: happy eyes */
 .here--checked-in .pig__lid {
   animation: none;
   opacity: 1;
 }
 
-.here--checked-in .pig__bar {
-  transform: translateY(-2px);
-  transition: transform 0.3s;
-}
 
 .here__pips {
   display: flex;

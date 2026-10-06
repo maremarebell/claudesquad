@@ -16,8 +16,8 @@ const $ = sel => root.querySelector(sel);
 const show = (sel, on = true) => { $(sel).hidden = !on; };
 const say = msg => { $('#here-status').textContent = msg; };
 
-// The logo pig, drawn as SVG cells. Rows 0-3 are the barbell, so a rep moves
-// that group; the eyelids sit over the two eye holes for blinking.
+// The logo pig, drawn as SVG cells; the eyelids sit over the two eye holes
+// for blinking.
 const PIG = [
   '.##............................##.',
   '.##............................##.',
@@ -40,15 +40,13 @@ const PIG = [
 ];
 
 function drawPig() {
-  const cells = bar => PIG.flatMap((row, r) => [...row].map((ch, c) =>
-    ch === '#' && (r < 4) === bar ? `<rect x="${c}" y="${r}" width="1" height="1"/>` : '')).join('');
+  const cells = PIG.flatMap((row, r) => [...row].map((ch, c) =>
+    ch === '#' ? `<rect x="${c}" y="${r}" width="1" height="1"/>` : '')).join('');
   $('#here-pig').innerHTML = `
     <svg viewBox="-1 -3 36 22" shape-rendering="crispEdges">
-      <g class="pig__body">${cells(false)}
-        <rect class="pig__lid" x="13" y="10" width="1" height="2"/>
-        <rect class="pig__lid" x="20" y="10" width="1" height="2"/>
-      </g>
-      <g class="pig__bar">${cells(true)}</g>
+      ${cells}
+      <rect class="pig__lid" x="13" y="10" width="1" height="2"/>
+      <rect class="pig__lid" x="20" y="10" width="1" height="2"/>
     </svg>`;
 }
 
@@ -165,13 +163,17 @@ async function renderBoard() {
   return { mine, inToday: present.some(m => m.id === user.id) };
 }
 
-// One rep from the pig: the bar goes up, the body squishes, a little wobble.
+// One rep: the whole pig hops and squishes on landing, tipping a little to
+// alternate sides. It moves as one piece, so the barbell never comes apart.
 function rep(n) {
   if (REDUCED.matches) return;
-  const ease = { duration: 380, easing: 'cubic-bezier(.3,0,.3,1)' };
-  $('.pig__bar').animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-2px)' }, { transform: 'translateY(0)' }], ease);
-  $('.pig__body').animate([{ transform: 'scaleY(1)' }, { transform: 'scaleY(.92)' }, { transform: 'scaleY(1)' }], ease);
-  $('#here-pig').animate([{ transform: `rotate(${n % 2 ? -3 : 3}deg)` }, { transform: 'none' }], { duration: 300 });
+  const tip = n % 2 ? -4 : 4;
+  $('#here-pig').animate([
+    { transform: 'translateY(0) scale(1, 1)' },
+    { transform: `translateY(-14px) rotate(${tip}deg) scale(.96, 1.04)`, offset: 0.4 },
+    { transform: 'translateY(0) scale(1.06, .92)', offset: 0.75 },
+    { transform: 'translateY(0) scale(1, 1)' },
+  ], { duration: 420, easing: 'cubic-bezier(.3,0,.3,1)' });
 }
 
 // Pixels and pixel hearts fly up off the pig. Round-number meetups get more.
@@ -407,6 +409,28 @@ api('/api/config').then(({ github }) => {
   if (!store.get()) return render(null);
   return api('/api/me').then(({ member }) => render(member));
 }).catch(() => say("Check-in isn't open yet."));
+
+// Install as an app. Chrome and Android hand over a prompt to show on a tap;
+// iPhone has none, so it gets the two taps written out. Hidden once installed.
+const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+if (!installed) {
+  let prompt;
+  addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    prompt = e;
+    show('#here-install');
+    show('#here-install-btn');
+  });
+  $('#here-install-btn').onclick = async () => {
+    prompt?.prompt();
+    if ((await prompt?.userChoice)?.outcome === 'accepted') show('#here-install', false);
+  };
+  if (/iP(hone|ad|od)/.test(navigator.userAgent)) {
+    show('#here-install');
+    show('#here-install-ios');
+  }
+  addEventListener('appinstalled', () => show('#here-install', false));
+}
 
 // Faces appear as other people check in.
 setInterval(() => {
