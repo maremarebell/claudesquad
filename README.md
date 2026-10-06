@@ -13,7 +13,7 @@ Builds to `_site/`. See `CONTRIBUTING.md` for how to add a profile or gallery ph
 
 ## Check-in (login, bump, points)
 
-`/here/` is the login page. Join with your name and GitHub username (one tap, no password). On a meetup day, shake your phone at the same time as someone standing next to you, like the old Bump app: two shakes within 20 seconds and 250 metres of each other check you both in. Someone already in can bump a newcomer in. 10 points per meetup. Your first check-in puts an "Add yourself on GitHub" link right there, which opens a PR adding your profile.
+`/here/` is the login page. Join with your name and GitHub username (one tap, no password). On a meetup day, shake your phone at the same time as someone standing next to you, like the old Bump app: two shakes within 20 seconds and 250 metres of each other check you both in. Someone already in can bump a newcomer in. 10 points per meetup, and 20 per merged pull request to this repo or any repo on the Projects page (counted straight from GitHub, matched by GitHub username). Your first check-in puts an "Add yourself on GitHub" link right there, which opens a PR adding your profile.
 
 The check-in server is `server/` (Node + Postgres), hosted on Render next to the site; `render.yaml` describes it. Matching happens on the server, so nobody can check in alone or from home. Locations are deleted after an hour and never sent to anyone.
 

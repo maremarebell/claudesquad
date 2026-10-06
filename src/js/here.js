@@ -2,11 +2,10 @@
 // once it's set up), then on a meetup day shake your phone at the same time
 // as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
-import { SHAKES, nyToday, tally, shakeCounter } from './checkin.js';
+import { SHAKES, POINTS, nyToday, tally, shakeCounter, countPRs, leaderboard } from './checkin.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
-const POINTS_PER_MEETUP = 10;
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
 const eventDates = new Set(cfg.events.map(e => e.date));
 const eventOn = date => cfg.events.find(e => e.date === date);
@@ -127,27 +126,56 @@ function avatar(member) {
 // Redraws points, today's faces and the leaderboard. Returns how many meetups
 // you have and whether you are already in today. Only meetup dates are read,
 // so the row count grows with meetups, not with every check-in ever.
+// Merged PRs to the squad's repos, straight from GitHub's public search, so
+// nobody can type their way to PR points. Cached ten minutes per tab; if
+// GitHub is unreachable or rate-limited, PRs just don't count until it's back.
+async function mergedPRs() {
+  const key = 'squad-prs';
+  try {
+    const hit = JSON.parse(sessionStorage.getItem(key));
+    if (hit && Date.now() - hit.at < 600000) return new Map(hit.counts);
+  } catch {}
+  const q = ['is:pr', 'is:merged', ...cfg.prRepos.map(r => `repo:${r}`)].join(' ');
+  const items = [];
+  for (let page = 1; page <= 5; page++) {
+    const res = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&page=${page}`);
+    if (!res.ok) throw new Error(`GitHub ${res.status}`);
+    const body = await res.json();
+    items.push(...body.items);
+    if (items.length >= body.total_count || !body.items.length) break;
+  }
+  const counts = countPRs(items);
+  try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), counts: [...counts] })); } catch {}
+  return counts;
+}
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 async function renderBoard() {
   const today = nyToday();
-  const data = await api(`/api/board?dates=${[...eventDates, today].join(',')}`);
+  const [data, members, prs] = await Promise.all([
+    api(`/api/board?dates=${[...eventDates, today].join(',')}`),
+    api('/api/members'),
+    mergedPRs().catch(() => new Map()),
+  ]);
 
   const { meetups, present } = tally(data, eventDates, today);
-  const mine = meetups.get(user.id)?.meetups || 0;
-  $('#here-points').textContent = mine * POINTS_PER_MEETUP;
-  $('#here-meetups').textContent = `${mine} ${mine === 1 ? 'meetup' : 'meetups'}`;
+  const rows = leaderboard(members, meetups, prs);
+  const me = rows.find(r => r.member.id === user.id) || { meetups: 0, prs: 0, points: 0 };
+  const mine = me.meetups;
+  $('#here-points').textContent = me.points;
+  $('#here-tally').textContent = `${plural(me.meetups, 'meetup')} · ${plural(me.prs, 'PR')}`;
 
   $('#here-faces').replaceChildren(...present.map(avatar));
   show('#here-present', present.length > 0);
 
-  $('#here-board').replaceChildren(...[...meetups.values()]
-    .sort((a, b) => b.meetups - a.meetups)
-    .map(({ member, meetups: n }) => {
-      const li = document.createElement('li');
-      if (member.id === user.id) li.className = 'is-you';
-      li.append(avatar(member), Object.assign(document.createElement('span'), { textContent: member.name }),
-        Object.assign(document.createElement('b'), { textContent: `${n * POINTS_PER_MEETUP} pts` }));
-      return li;
-    }));
+  $('#here-board').replaceChildren(...rows.map(({ member, points }) => {
+    const li = document.createElement('li');
+    if (member.id === user.id) li.className = 'is-you';
+    li.append(avatar(member), Object.assign(document.createElement('span'), { textContent: member.name }),
+      Object.assign(document.createElement('b'), { textContent: `${points} pts` }));
+    return li;
+  }));
 
   show('#here-locked', mine === 0);
   show('#here-unlocked', mine > 0);
@@ -180,7 +208,7 @@ function rep(n) {
 function burst(big) {
   if (REDUCED.matches) return;
   const host = $('.here__stage');
-  const plus = Object.assign(document.createElement('span'), { className: 'here__plus', textContent: `+${POINTS_PER_MEETUP}` });
+  const plus = Object.assign(document.createElement('span'), { className: 'here__plus', textContent: `+${POINTS.meetup}` });
   host.append(plus);
   plus.animate([{ transform: 'translate(-50%, 0)', opacity: 1 }, { transform: 'translate(-50%, -80px)', opacity: 0 }],
     { duration: 1100, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = () => plus.remove();
@@ -277,7 +305,7 @@ async function landed(names, wasIn) {
     root.classList.add('here--armed');
     return listen();
   }
-  say(`Bumped${who}. Meetup #${mine}, +${POINTS_PER_MEETUP} points.`);
+  say(`Bumped${who}. Meetup #${mine}, +${POINTS.meetup} points.`);
   burst([1, 5, 10, 25, 50, 100].includes(mine));
   show('#here-welcome', mine === 1);
 }

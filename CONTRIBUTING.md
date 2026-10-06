@@ -58,6 +58,10 @@ What it is, in a sentence or two.
 
 The projects page links each one to its open issues and to issues labelled `good first issue`, so label a few of those on your repo.
 
+## Points
+
+Every merged pull request to this repo, or to any repo on the Projects page, is 20 points on the check-in leaderboard, as long as you joined with the same GitHub username. Meetups are 10.
+
 ## Add a gallery photo
 
 1. Add the image to `src/images/gallery/your-file.jpg`.

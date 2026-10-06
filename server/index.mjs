@@ -5,6 +5,7 @@
 //   GET  /api/auth/github                             -> GitHub sign-in (when configured)
 //   GET  /api/auth/github/callback                    -> back to /here/#token=...
 //   GET  /api/me                                      -> { member }
+//   GET  /api/members                                 -> [member]
 //   GET  /api/board?dates=2026-10-15,...              -> [{ event_date, members }]
 //   POST /api/bump            { lat, lng }            -> { matched, with }
 //   GET  /api/config                                  -> { github }
@@ -132,6 +133,13 @@ const routes = {
   },
 
   'GET /api/me': async req => ({ member: await whoami(req) }),
+
+  // everyone in the squad, so PR points can find people who haven't checked in yet
+  'GET /api/members': async req => {
+    await whoami(req);
+    const { rows } = await db.query('select id, login, name, avatar_url from members order by created_at');
+    return rows;
+  },
 
   'POST /api/signout': async req => {
     const token = (req.headers.authorization || '').replace(/^Bearer /, '');

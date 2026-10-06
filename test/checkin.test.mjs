@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nyToday, tally, shakeCounter, SHAKES } from '../src/js/checkin.js';
+import { nyToday, tally, shakeCounter, countPRs, leaderboard, SHAKES, POINTS } from '../src/js/checkin.js';
 
 const mare = { id: 'u2', name: 'Mare' };
 const iso = { id: 'u1', name: 'Iso' };
@@ -71,4 +71,27 @@ test('in today on a non-meetup date shows up but does not score', () => {
   const { meetups, present } = tally([{ event_date: '2026-10-20', members: iso }], new Set(['2026-10-15']), '2026-10-20');
   assert.deepEqual(present, [iso]);
   assert.equal(meetups.size, 0);
+});
+
+test('merged PRs count per login, case-insensitive, bots left out', () => {
+  const prs = countPRs([
+    { user: { login: 'Iso', type: 'User' } },
+    { user: { login: 'iso', type: 'User' } },
+    { user: { login: 'dependabot[bot]', type: 'Bot' } },
+    { user: null },
+  ]);
+  assert.equal(prs.get('iso'), 2);
+  assert.equal(prs.size, 1);
+});
+
+test('the leaderboard adds meetups and PRs and drops members with nothing', () => {
+  const members = [
+    { id: 'u1', login: 'Iso', name: 'Iso' },
+    { id: 'u2', login: 'mare', name: 'Mare' },
+    { id: 'u3', login: 'new', name: 'New' },
+  ];
+  const meetups = new Map([['u2', { meetups: 3 }]]);
+  const prs = new Map([['iso', 2]]);
+  const rows = leaderboard(members, meetups, prs);
+  assert.deepEqual(rows.map(r => [r.member.name, r.points]), [['Iso', 2 * POINTS.pr], ['Mare', 3 * POINTS.meetup]]);
 });

@@ -1,6 +1,7 @@
 // The check-in rules with no DOM or network in them, so Node can test them.
 
 export const SHAKES = 3;
+export const POINTS = { meetup: 10, pr: 20 };
 
 // New York's calendar date. Moves together with POST /api/bump in
 // server/index.mjs, which dates check-ins in the same zone.
@@ -35,3 +36,28 @@ export function shakeCounter({ need = SHAKES, within = 1000, gap = 150, threshol
   };
 }
 
+
+// Merged pull requests per GitHub login (lowercased), from GitHub search
+// results. Bots don't score.
+export function countPRs(items) {
+  const counts = new Map();
+  for (const { user } of items) {
+    if (!user || user.type === 'Bot') continue;
+    const login = user.login.toLowerCase();
+    counts.set(login, (counts.get(login) || 0) + 1);
+  }
+  return counts;
+}
+
+// One row per member with any points: meetups from check-ins, PRs matched by
+// GitHub login. Highest first.
+export function leaderboard(members, meetups, prs) {
+  return members
+    .map(member => {
+      const m = meetups.get(member.id)?.meetups || 0;
+      const p = prs.get(member.login.toLowerCase()) || 0;
+      return { member, meetups: m, prs: p, points: m * POINTS.meetup + p * POINTS.pr };
+    })
+    .filter(row => row.points > 0)
+    .sort((a, b) => b.points - a.points);
+}

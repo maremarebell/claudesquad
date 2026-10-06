@@ -34,7 +34,7 @@ permalink: /here/
 
     <div class="here__score">
       <span class="here__points" id="here-points">0</span>
-      <span class="here__label">points · <span id="here-meetups">0 meetups</span></span>
+      <span class="here__label" id="here-tally">0 meetups · 0 PRs</span>
     </div>
 
     <section id="here-present" hidden>
@@ -66,5 +66,5 @@ permalink: /here/
   <label class="here__haptic" aria-hidden="true"><input type="checkbox" switch id="haptic" tabindex="-1"></label>
 </div>
 
-<script type="application/json" id="here-config">{{ { apiUrl: site.apiUrl, repo: site.repo, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
+<script type="application/json" id="here-config">{{ { apiUrl: site.apiUrl, repo: site.repo, prRepos: prRepos, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
 <script type="module" src="/js/here.js"></script>
