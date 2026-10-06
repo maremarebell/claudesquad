@@ -11,7 +11,12 @@
   --border: #2a2420;
   --rule: rgba(243, 236, 228, 0.14);
 
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Claude's own faces are Anthropic Sans, Serif and Mono, which are not open
+     licence. These are the nearest open ones, named after them so a machine
+     that has the real fonts uses them. */
+  --serif: 'Anthropic Serif', 'Source Serif 4', Georgia, serif;
+  --sans: 'Anthropic Sans', 'Hanken Grotesk', system-ui, sans-serif;
+  --mono: 'Anthropic Mono', 'JetBrains Mono', ui-monospace, monospace;
   --pixel: 'Press Start 2P', monospace;
 
   /* Spacing scale: tight inside a group, generous between groups */
@@ -54,7 +59,7 @@
 }
 
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: var(--sans);
   line-height: 1.7;
   color: var(--ink);
   background-color: var(--site-bg);
@@ -298,7 +303,7 @@ mark {
   }
 
   .topbar__text {
-    display: none;
+    font-size: 10px;
   }
 
   .nav__link::before,
@@ -317,16 +322,20 @@ mark {
 /* Typography */
 h1,
 .page-title {
-  font-family: var(--pixel);
-  font-size: clamp(20px, 4vw, 40px);
-  line-height: 1.3;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(30px, 5vw, 56px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
 h2 {
-  font-family: var(--pixel);
-  font-size: clamp(16px, 2.4vw, 22px);
-  line-height: 1.4;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
   color: var(--ink);
   padding-bottom: var(--space-xs);
   margin-bottom: var(--space-md);
@@ -369,10 +378,11 @@ h2 {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-size: clamp(44px, 12.5vw, 200px);
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  color: rgba(243, 236, 228, 0.14);
+  font-size: clamp(64px, 17vw, 280px);
+  font-weight: 500;
+  line-height: 0.88;
+  letter-spacing: -0.03em;
+  color: rgba(243, 236, 228, 0.16);
   user-select: none;
 }
 
@@ -740,8 +750,8 @@ h2 {
 
 .here__welcome-title {
   margin-bottom: var(--space-sm);
-  font-family: var(--pixel);
-  font-size: 14px;
+  font-family: var(--serif);
+  font-size: 22px;
   line-height: 1.6;
   color: var(--accent);
 }
@@ -1228,7 +1238,7 @@ h2 {
    ============================================================ */
 .calendar {
   background: var(--site-bg);
-  font-family: 'Open Sans', sans-serif;
+  font-family: var(--sans);
   color: var(--ink);
   padding: var(--space-xl) var(--gutter);
   min-height: calc(100vh - 200px);
@@ -1276,8 +1286,8 @@ h2 {
 }
 
 .calendar__month-name {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 13px;
+  font-family: var(--serif);
+  font-size: 20px;
   color: var(--ink);
 }
 
@@ -1392,7 +1402,7 @@ h2 {
   transition: opacity 0.2s;
   margin-bottom: 5px;
   z-index: var(--z-tooltip);
-  font-family: 'Open Sans', sans-serif;
+  font-family: var(--sans);
 }
 
 .calendar__day--event::before {

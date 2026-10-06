@@ -45,10 +45,10 @@ function buildPig() {
   shape.lineTo(-half, half);
   shape.closePath();
   const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: VOXEL * 1.4, steps: 1, bevelEnabled: true,
+    depth: VOXEL * 2.4, steps: 1, bevelEnabled: true,
     bevelSegments: 1, bevelSize: VOXEL * 0.07, bevelThickness: VOXEL * 0.07,
   });
-  geometry.translate(0, 0, -VOXEL * 0.7);
+  geometry.translate(0, 0, -VOXEL * 1.2);
   const mesh = new THREE.InstancedMesh(
     geometry,
     new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.38, metalness: 0.18, emissive: ACCENT, emissiveIntensity: 0.08 }),
@@ -167,6 +167,21 @@ function start() {
   });
   hero.addEventListener('pointerleave', () => pointer.set(9, 9));
 
+  // Look-around: the camera leans toward the pointer, or toward how a phone is
+  // tilted, so the pig reads as a solid object rather than a picture.
+  const lean = new THREE.Vector2();
+  const leanTo = new THREE.Vector2();
+  hero.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'mouse') return;
+    const r = hero.getBoundingClientRect();
+    leanTo.set(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
+  });
+  hero.addEventListener('pointerleave', () => leanTo.set(0, 0));
+  addEventListener('deviceorientation', e => {
+    if (e.gamma == null) return;
+    leanTo.set(THREE.MathUtils.clamp(e.gamma / 30, -1, 1), THREE.MathUtils.clamp((e.beta - 45) / 30, -1, 1));
+  });
+
   // tap the stage and the pig does a rep: a press, a ring flare, and a shockwave
   // through the debris. The corner tag keeps count.
   let repAt = -10, reps = 0;
@@ -215,13 +230,15 @@ function start() {
 
     // camera never stops: a slow sway around the front of the pig
     const d = camera.userData.dist;
-    const az = Math.sin(t * 0.12) * 0.24;
-    camera.position.set(Math.sin(az) * d, 0.2 + Math.sin(t * 0.2) * 0.12, Math.cos(az) * d);
+    // eased toward the target each frame: a spring, so stepping per frame is right
+    lean.lerp(leanTo, 0.06);
+    const az = Math.sin(t * 0.12) * 0.24 + lean.x * 0.45;
+    camera.position.set(Math.sin(az) * d, 0.2 + Math.sin(t * 0.2) * 0.12 - lean.y * 1.1, Math.cos(az) * d);
     camera.lookAt(0, 0, 0);
 
     pig.position.y = Math.sin(t * 0.8) * 0.06 + lift;
     lights.forEach(l => { l.intensity = 8 + 10 * flare; });
-    pig.rotation.y = Math.sin(t * 0.3) * 0.12;
+    pig.rotation.y = Math.sin(t * 0.3) * 0.3;
     upper.rotation.x = Math.PI / 2 + 0.15 + Math.sin(t * 0.18) * 0.06;
     lower.rotation.x = Math.PI / 2 - 0.35 + Math.sin(t * 0.15) * 0.06;
 
