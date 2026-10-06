@@ -49,7 +49,7 @@ npm run build   # outputs to _site/
 - Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
 - Git: remote is github.com/maremarebell/claudesquad.
-- Deploy: Render, all free. Static site `claudesquad` (https://claudesquad.onrender.com, made in the dashboard, builds `claudesquad-3d-attendance`; switch to `main` once the PR merges), plus the Blueprint in `render.yaml`: `claudesquad-api` (server/). Its database is Neon (free; Render's free database slot is Meridian's), connection string in the service's `DATABASE_URL`. Render has no access to the repo (it's maremarebell's), so pushes do NOT auto-deploy: Manual Deploy in the dashboard, or have maremarebell install the Render GitHub app.
+- Deploy: Render, all free. Static site `claudesquad` (https://claudesquad.onrender.com, made in the dashboard, builds `claudesquad-3d-attendance`; switch to `main` once the PR merges), plus the Blueprint in `render.yaml`: `claudesquad-api` (server/). Its tables live in schema `claudesquad` inside `meridian-db` (Render allows one free database per workspace; Render fills `DATABASE_URL`). If Meridian's database goes away, check-in goes with it: point `DATABASE_URL` at a new Postgres and the server recreates its tables on start. Render has no access to the repo (it's maremarebell's), so pushes do NOT auto-deploy: Manual Deploy in the dashboard, or have maremarebell install the Render GitHub app.
 
 ## TODO
 

@@ -11,7 +11,7 @@ const PORT = 10123;
 const API = `http://127.0.0.1:${PORT}`;
 const sql = q => execSync(`docker exec -i sq-pg psql -U postgres -tA`, { input: q, encoding: 'utf8' }).trim();
 
-sql('drop table if exists sessions, bumps, checkins, members cascade;');
+sql('drop schema if exists claudesquad cascade; drop table if exists sessions, bumps, checkins, members cascade;');
 const server = spawn('node', [new URL('./index.mjs', import.meta.url).pathname], {
   env: { ...process.env, DATABASE_URL, PORT, SITE_URL: 'https://claudesquad.onrender.com' },
   stdio: ['ignore', 'pipe', 'inherit'],
@@ -78,20 +78,20 @@ await check('two people shaking together nearby both get checked in', async () =
 });
 
 await check('a bump over 20s old does not match; someone already in can bring a newcomer in', async () => {
-  sql("update bumps set at = now() - interval '30 seconds';");
+  sql("update claudesquad.bumps set at = now() - interval '30 seconds';");
   assert.equal((await call('/api/bump', { method: 'POST', token: cy.token, body: gym })).body.matched, false);
   const r = await call('/api/bump', { method: 'POST', token: ana.token, body: nearby });
   assert.deepEqual(r.body.with, ['Cy']);
-  assert.equal(sql(`select count(*) from checkins;`), '3');
+  assert.equal(sql(`select count(*) from claudesquad.checkins;`), '3');
 });
 
 await check('two bumps in the same instant still match', async () => {
-  sql("update bumps set at = now() - interval '30 seconds';");
+  sql("update claudesquad.bumps set at = now() - interval '30 seconds';");
   const dee = await join('Dee', 'dee-gh');
   const eli = await join('Eli', 'eli-gh');
   const both = await Promise.all([dee, eli].map(u => call('/api/bump', { method: 'POST', token: u.token, body: gym })));
   assert.ok(both.some(r => r.body.matched), JSON.stringify(both.map(r => r.body)));
-  assert.equal(sql(`select count(*) from checkins;`), '5');
+  assert.equal(sql(`select count(*) from claudesquad.checkins;`), '5');
 });
 
 await check('the site may call the API; other origins get no CORS header', async () => {

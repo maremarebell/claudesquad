@@ -6,9 +6,10 @@
 #   build`, publish `_site`, headers: /sw.js Cache-Control no-cache and
 #   /manifest.webmanifest Content-Type application/manifest+json.
 #
-# The database is Neon (free Postgres), because this Render workspace's one
-# free database slot is taken. DATABASE_URL is Neon's connection string, set
-# by hand on claudesquad-api (sync: false keeps it out of this public file).
+# The database: the workspace's existing Postgres, meridian-db (Render allows
+# one free database per workspace and Meridian has it). Check-in keeps all its
+# tables in its own schema, claudesquad, so neither project touches the
+# other's. Render fills DATABASE_URL from it; nothing secret is in this file.
 
 services:
   - type: web
@@ -22,7 +23,11 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: meridian-db
+          property: connectionString
+      - key: DB_SCHEMA
+        value: claudesquad
       - key: SITE_URL
         value: https://claudesquad.onrender.com
       # Sign in with GitHub turns on when GITHUB_CLIENT_ID and GITHUB_SECRET

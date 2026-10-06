@@ -25,10 +25,21 @@ const API_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 const ORIGINS = new Set([SITE_URL, 'http://localhost:8080', 'http://127.0.0.1:8080']);
 const github = Boolean(GITHUB_CLIENT_ID && GITHUB_SECRET);
 
-const db = new pg.Pool({
+// Everything lives in its own schema, so the database can be shared with
+// another project without any table of ours touching theirs.
+const SCHEMA = process.env.DB_SCHEMA || 'claudesquad';
+const connection = {
   connectionString: DATABASE_URL,
-  ssl: /localhost|127\.0\.0\.1/.test(DATABASE_URL || '') ? false : { rejectUnauthorized: false },
-});
+  ssl: /localhost|127\.0\.0\.1/.test(DATABASE_URL || '') || !/\./.test(new URL(DATABASE_URL || 'postgres://x').hostname)
+    ? false : { rejectUnauthorized: false },
+};
+{
+  const setup = new pg.Client(connection);
+  await setup.connect();
+  await setup.query(`create schema if not exists ${SCHEMA}`);
+  await setup.end();
+}
+const db = new pg.Pool({ ...connection, options: `-c search_path=${SCHEMA}` });
 await db.query(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
 
 const hash = token => createHash('sha256').update(token).digest('hex');
@@ -150,7 +161,7 @@ const routes = {
       await client.query('begin');
       // One bump at a time: two phones in the same instant would otherwise each
       // look for the other before either row was committed, and both miss.
-      await client.query("select pg_advisory_xact_lock(hashtext('bump'))");
+      await client.query("select pg_advisory_xact_lock(hashtext('claudesquad.bump'))");
       await client.query("delete from bumps where at < now() - interval '1 hour'");
       await client.query('insert into bumps (member_id, lat, lng) values ($1, $2, $3)', [me.id, lat, lng]);
       const { rows } = await client.query(
