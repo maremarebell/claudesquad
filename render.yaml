@@ -1,20 +1,14 @@
 # Render. Two pieces, both free:
 #
-# - claudesquad-api + claudesquad-db (this Blueprint): the check-in server in
-#   server/ and its Postgres. Render wires DATABASE_URL itself.
+# - claudesquad-api (this Blueprint): the check-in server in server/.
 # - claudesquad (static site, made in the dashboard, not in this file): the
 #   11ty site at https://claudesquad.onrender.com. Build `npm ci && npm run
 #   build`, publish `_site`, headers: /sw.js Cache-Control no-cache and
 #   /manifest.webmanifest Content-Type application/manifest+json.
 #
-# Free Postgres on Render expires 30 days after it's created unless it's
-# upgraded (the dashboard warns first). Upgrading keeps the data.
-databases:
-  - name: claudesquad-db
-    plan: free
-    region: oregon
-    databaseName: claudesquad
-    user: claudesquad
+# The database is Neon (free Postgres), because this Render workspace's one
+# free database slot is taken. DATABASE_URL is Neon's connection string, set
+# by hand on claudesquad-api (sync: false keeps it out of this public file).
 
 services:
   - type: web
@@ -28,9 +22,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: claudesquad-db
-          property: connectionString
+        sync: false
       - key: SITE_URL
         value: https://claudesquad.onrender.com
       # Sign in with GitHub turns on when GITHUB_CLIENT_ID and GITHUB_SECRET
