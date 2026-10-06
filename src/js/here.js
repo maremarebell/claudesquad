@@ -3,6 +3,7 @@
 // as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
 import { SHAKES, POINTS, nyToday, tally, shakeCounter, leaderboard } from './checkin.js';
+import { PIG } from './pig.js';
 import { api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
 
 const root = document.getElementById('here');
@@ -17,26 +18,6 @@ const say = msg => { $('#here-status').textContent = msg; };
 
 // The logo pig, drawn as SVG cells; the eyelids sit over the two eye holes
 // for blinking.
-const PIG = [
-  '.##............................##.',
-  '.##............................##.',
-  '.##.....###.............##.....##.',
-  '##################################',
-  '.##....####............####....##.',
-  '.##...####..............####...##.',
-  '.##...###................###...##.',
-  '......###................###......',
-  '......###..############..###......',
-  '......####.############.####......',
-  '......#######.######.#######......',
-  '......#######.######.#######......',
-  '.......####################.......',
-  '........##################........',
-  '...........############...........',
-  '...........############...........',
-  '............#.#....#.#............',
-  '............#.#....#.#............',
-];
 
 function drawPig() {
   const cells = PIG.flatMap((row, r) => [...row].map((ch, c) =>
@@ -52,6 +33,23 @@ function drawPig() {
 }
 
 drawPig();
+
+// The 3D pig takes over the stage where WebGL starts and motion is welcome;
+// otherwise the flat pig above stays. Its mood follows the page's state.
+let pig3d = null;
+const mood = () => pig3d?.mood({
+  sleeping: root.classList.contains('here--sleeping'),
+  happy: root.classList.contains('here--checked-in'),
+});
+if (!REDUCED.matches) {
+  import('./pig3d.js').then(({ mountPig }) => {
+    pig3d = mountPig($('.here__stage'));
+    if (!pig3d) return;
+    root.classList.add('here--3d');
+    mood();
+    new MutationObserver(mood).observe(root, { attributes: true, attributeFilter: ['class'] });
+  }).catch(() => {});
+}
 
 // A signed-out answer from the server takes the page back to the join form.
 async function api(path, body) {
@@ -143,6 +141,7 @@ async function renderBoard() {
 // alternate sides. It moves as one piece, so the barbell never comes apart.
 function rep(n) {
   if (REDUCED.matches) return;
+  pig3d?.rep(n);
   const tip = n % 2 ? -4 : 4;
   $('#here-pig').animate([
     { transform: 'translateY(0) scale(1, 1)' },
@@ -155,6 +154,7 @@ function rep(n) {
 // Pixels and pixel hearts fly up off the pig. Round-number meetups get more.
 function burst(big) {
   if (REDUCED.matches) return;
+  pig3d?.celebrate(big);
   const host = $('.here__stage');
   const plus = Object.assign(document.createElement('span'), { className: 'here__plus', textContent: `+${POINTS.meetup}` });
   host.append(plus);

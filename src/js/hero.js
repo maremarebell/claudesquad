@@ -177,6 +177,13 @@ function start() {
     leanTo.set(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
   });
   hero.addEventListener('pointerleave', () => leanTo.set(0, 0));
+  // Scrolling through the hero tips the pig back and pulls the camera away,
+  // eased like the lean so a flick of the wheel doesn't jump it.
+  let scrolled = 0, scrolledTo = 0;
+  addEventListener('scroll', () => {
+    scrolledTo = Math.min(1, Math.max(0, scrollY / (hero.offsetHeight || 1)));
+  }, { passive: true });
+
   addEventListener('deviceorientation', e => {
     if (e.gamma == null) return;
     leanTo.set(THREE.MathUtils.clamp(e.gamma / 30, -1, 1), THREE.MathUtils.clamp((e.beta - 45) / 30, -1, 1));
@@ -233,16 +240,18 @@ function start() {
     const lift = k >= 0 && k < 1 ? Math.sin(Math.PI * k) ** 2 * 0.35 : 0;
 
     // camera never stops: a slow sway around the front of the pig
-    const d = camera.userData.dist;
     // eased toward the target each frame: a spring, so stepping per frame is right
     lean.lerp(leanTo, 0.06);
+    scrolled += (scrolledTo - scrolled) * 0.1;
+    const d = camera.userData.dist * (1 + scrolled * 0.7);
     const az = Math.sin(t * 0.12) * 0.24 + lean.x * 0.45;
     camera.position.set(Math.sin(az) * d, 0.2 + Math.sin(t * 0.2) * 0.12 - lean.y * 1.1, Math.cos(az) * d);
     camera.lookAt(0, 0, 0);
 
-    pig.position.y = Math.sin(t * 0.8) * 0.06 + lift;
+    pig.position.y = Math.sin(t * 0.8) * 0.06 + lift + scrolled * 0.6;
+    pig.rotation.x = -scrolled * 0.9;
     lights.forEach(l => { l.intensity = 8 + 10 * flare; });
-    pig.rotation.y = Math.sin(t * 0.3) * 0.3;
+    pig.rotation.y = Math.sin(t * 0.3) * 0.3 + scrolled * 1.2;
     upper.rotation.x = Math.PI / 2 + 0.15 + Math.sin(t * 0.18) * 0.06;
     lower.rotation.x = Math.PI / 2 - 0.35 + Math.sin(t * 0.15) * 0.06;
 

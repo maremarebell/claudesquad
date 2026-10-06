@@ -67,4 +67,7 @@ permalink: /here/
 </div>
 
 <script type="application/json" id="here-config">{{ { repo: site.repo, prRepos: prRepos, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.180.0/build/three.module.min.js" } }
+</script>
 <script type="module" src="/js/here.js"></script>
