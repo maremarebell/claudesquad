@@ -107,7 +107,9 @@ async function join(e) {
       github: form.github.value.trim().replace(/^@/, ''),
     });
     store.set(token);
-    render(member);
+    buzz(30);
+    await render(member);
+    say(`Welcome, ${member.name}.`);
   } catch (err) {
     say(err.message);
   } finally {
@@ -404,7 +406,7 @@ api('/api/config').then(({ github }) => {
   show('#here-github', github);
   if (!store.get()) return render(null);
   return api('/api/me').then(({ member }) => render(member));
-}).catch(e => say(e.message));
+}).catch(() => say("Check-in isn't open yet."));
 
 // Faces appear as other people check in.
 setInterval(() => {

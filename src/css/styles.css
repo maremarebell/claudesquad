@@ -59,6 +59,9 @@
 }
 
 body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
   font-family: var(--sans);
   line-height: 1.7;
   color: var(--ink);
@@ -201,7 +204,8 @@ mark {
 .header {
   background-color: var(--site-bg);
   border-bottom: 1px solid var(--rule);
-  padding: var(--space-xs) 0;
+  /* clears the status bar when installed to the home screen */
+  padding: max(var(--space-xs), env(safe-area-inset-top)) 0 var(--space-xs);
 }
 
 .header__container {
@@ -245,6 +249,7 @@ mark {
 }
 
 .nav__link {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -294,6 +299,11 @@ mark {
   .nav__link {
     padding: 0 var(--space-3xs);
     font-size: 11px;
+    letter-spacing: 0.03em;
+  }
+
+  .header__logo-img {
+    height: 28px;
   }
 
   /* one line of topbar on a phone instead of two */
@@ -323,7 +333,7 @@ mark {
 h1,
 .page-title {
   font-family: var(--serif);
-  font-weight: 500;
+  font-weight: 400;
   font-size: clamp(30px, 5vw, 56px);
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -332,7 +342,7 @@ h1,
 
 h2 {
   font-family: var(--serif);
-  font-weight: 500;
+  font-weight: 400;
   font-size: clamp(24px, 3vw, 34px);
   line-height: 1.2;
   letter-spacing: -0.01em;
@@ -379,7 +389,7 @@ h2 {
   justify-content: center;
   align-items: center;
   font-size: clamp(64px, 17vw, 280px);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 0.88;
   letter-spacing: -0.03em;
   color: rgba(243, 236, 228, 0.16);
@@ -448,10 +458,6 @@ h2 {
   color: var(--ink-muted);
 }
 
-.hero__tag--right {
-  justify-self: end;
-}
-
 .hero__meetup {
   grid-row: 3;
   align-self: end;
@@ -461,6 +467,7 @@ h2 {
   width: min(320px, 100%);
   padding: var(--space-sm);
   background-color: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
 }
 
@@ -1135,6 +1142,102 @@ h2 {
   color: var(--accent);
 }
 
+/* Projects: one ruled row each, what it is, what help it wants, where to start */
+.projects {
+  border-top: 1px solid var(--rule);
+}
+
+.project {
+  padding: var(--space-lg) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.content > .projects h2.project__name {
+  margin: 0 0 var(--space-3xs);
+  padding: 0;
+  border: 0;
+  position: static;
+}
+
+.project__name a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.project__name a:hover {
+  color: var(--accent);
+}
+
+.content p.project__lead {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.content .project__about p {
+  font-size: 16px;
+  margin: var(--space-xs) 0;
+}
+
+.project__help {
+  list-style: none;
+  margin: var(--space-xs) 0;
+  padding: 0;
+}
+
+.content .project__help li {
+  padding-left: var(--space-md);
+  position: relative;
+}
+
+.project__help li::before {
+  content: '+';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-family: var(--mono);
+}
+
+.content p.project__links,
+.content p.project__lead {
+  margin-bottom: 0;
+}
+
+.content p.project__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-md);
+  margin-top: var(--space-xs);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.project__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+}
+
+.projects__empty {
+  padding: var(--space-lg) 0;
+  color: var(--ink-muted);
+}
+
+.projects__add {
+  margin-top: var(--space-lg);
+}
+
+.projects__add .here__btn {
+  width: auto;
+  gap: var(--space-md);
+}
+
 /* Profile pages */
 .profile {
   max-width: 560px;
@@ -1241,7 +1344,8 @@ h2 {
 /* Footer: the tagline set edge to edge */
 .footer {
   background-color: var(--site-bg);
-  padding: var(--space-xl) 0 var(--space-sm);
+  /* clears the home bar on iPhones */
+  padding: var(--space-xl) 0 max(var(--space-sm), env(safe-area-inset-bottom));
   border-top: 1px solid var(--rule);
   overflow: hidden;
 }
@@ -1270,7 +1374,7 @@ h2 {
 }
 
 /* ============================================================
-   Calendar Page — grid/day styling carried over from the
+   Calendar Page: grid/day styling carried over from the
    FractalU calendar; data now comes from events.json
    ============================================================ */
 .calendar {

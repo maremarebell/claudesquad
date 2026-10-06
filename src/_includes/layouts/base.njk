@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% set pageName = name or title %}{% if pageName and pageName != 'Home' %}{{ pageName }} · {% endif %}Claude Squad</title>
   <link rel="icon" href="/images/favicon/favicon.ico" sizes="any">
+  <link rel="icon" href="/images/pig.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon/favicon-16x16.png">
   <link rel="apple-touch-icon" href="/images/favicon/apple-touch-icon.png">
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#000000">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Squad">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
@@ -21,7 +24,7 @@
   <header class="header">
     <div class="header__container">
       <a href="/" class="header__brand">
-        <img src="/images/logomark-72.png" width="130" height="72" alt="Claude Squad" class="header__logo-img">
+        <img src="/images/pig.svg" width="68" height="36" alt="Claude Squad" class="header__logo-img">
         <span class="header__logo-text">Claude Squad</span>
       </a>
       <nav class="nav">
@@ -31,6 +34,9 @@
           </li>
           <li class="nav__item">
             <a href="/calendar/" class="nav__link"{% if page.url == "/calendar/" %} aria-current="page"{% endif %}>Calendar</a>
+          </li>
+          <li class="nav__item">
+            <a href="/projects/" class="nav__link"{% if page.url == "/projects/" %} aria-current="page"{% endif %}>Projects</a>
           </li>
           <li class="nav__item">
             <a href="/members/" class="nav__link"{% if "/members/" in page.url %} aria-current="page"{% endif %}>Members</a>

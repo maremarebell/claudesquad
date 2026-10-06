@@ -193,6 +193,10 @@ function start() {
     tag.textContent = `[ REPS ${String(reps).padStart(2, '0')} ] NYC`;
   }
   canvas.addEventListener('click', rep);
+  // iPhone only shares tilt after asking, and only inside a tap: ask on the first one
+  canvas.addEventListener('click', () => {
+    if (typeof DeviceOrientationEvent?.requestPermission === 'function') DeviceOrientationEvent.requestPermission().catch(() => {});
+  }, { once: true });
   canvas.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
