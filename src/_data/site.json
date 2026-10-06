@@ -1,6 +1,5 @@
 {
   "whatsappLink": "https://chat.whatsapp.com/FzIgsZtcNeLFUvM1IehCBu?mode=gi_t",
   "repo": "https://github.com/maremarebell/claudesquad",
-  "supabaseUrl": "",
-  "supabaseAnonKey": ""
+  "apiUrl": "https://claudesquad-api.onrender.com"
 }

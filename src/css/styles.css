@@ -660,6 +660,43 @@ h2 {
   background: var(--ink);
 }
 
+/* join: two fields and a button, nothing else */
+.here__join {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+#here-github + .here__join {
+  margin-top: var(--space-md);
+}
+
+.here__join label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.here__join input {
+  padding: var(--space-xs);
+  border: 1px solid var(--rule);
+  background: var(--site-bg);
+  color: var(--ink);
+  font: 16px var(--sans);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.here__join input:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
 /* the pig stage: the logo pig on a little gym floor, waiting for shakes */
 .here__stage {
   position: relative;

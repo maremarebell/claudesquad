@@ -1,8 +1,8 @@
-// Check-in: sign in with GitHub, then on a meetup day shake your phone at the
-// same time as someone next to you, like Bump. The pig does a rep per shake;
+// Check-in: join with your name and GitHub username (or Sign in with GitHub
+// once it's set up), then on a meetup day shake your phone at the same time
+// as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { SHAKES, nyToday, tally, shakeCounter, userChanges } from './checkin.js';
+import { SHAKES, nyToday, tally, shakeCounter } from './checkin.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
@@ -54,8 +54,36 @@ function drawPig() {
 
 drawPig();
 
-const configured = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey);
-const db = configured ? createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
+// The check-in server (server/ in this repo, on Render). The session token
+// lives on this phone only.
+const API = cfg.apiUrl;
+const TOKEN = 'squad-token';
+const store = {
+  get: () => { try { return localStorage.getItem(TOKEN); } catch { return null; } },
+  set: t => { try { t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN); } catch {} },
+};
+
+async function api(path, body) {
+  const token = store.get();
+  let res;
+  try {
+    res = await fetch(API + path, {
+      method: body ? 'POST' : 'GET',
+      headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) },
+      body: body && JSON.stringify(body),
+    });
+  } catch {
+    throw new Error("Can't reach the check-in server. Check your signal and try again.");
+  }
+  const out = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    store.set(null);
+    render(null);
+  }
+  if (!res.ok) throw new Error(out.error || `Check-in server error ${res.status}`);
+  return out;
+}
+
 let user = null;
 let checkingIn = false;
 // the live shake listener and its fallback timer, so sign-out can stop them
@@ -68,20 +96,23 @@ function buzz(pattern) {
   else $('.here__haptic').click();
 }
 
-function signIn() {
-  // exactly /here/: that's the URL on Supabase's redirect allow-list
-  db.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: `${location.origin}/here/` } });
-}
-
-async function saveMember() {
-  const m = user.user_metadata;
-  const { error } = await db.from('members').upsert({
-    id: user.id,
-    login: m.user_name,
-    name: m.full_name || m.user_name,
-    avatar_url: m.avatar_url,
-  });
-  if (error) throw new Error(`Could not save your profile: ${error.message}`);
+async function join(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    const { token, member } = await api('/api/join', {
+      name: form.name.value,
+      github: form.github.value.trim().replace(/^@/, ''),
+    });
+    store.set(token);
+    render(member);
+  } catch (err) {
+    say(err.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function avatar(member) {
@@ -98,10 +129,7 @@ function avatar(member) {
 // so the row count grows with meetups, not with every check-in ever.
 async function renderBoard() {
   const today = nyToday();
-  const { data, error } = await db.from('checkins')
-    .select('event_date, members(id, login, name, avatar_url)')
-    .in('event_date', [...eventDates, today]);
-  if (error) throw new Error(`Could not load attendance: ${error.message}`);
+  const data = await api(`/api/board?dates=${[...eventDates, today].join(',')}`);
 
   const { meetups, present } = tally(data, eventDates, today);
   const mine = meetups.get(user.id)?.meetups || 0;
@@ -124,9 +152,9 @@ async function renderBoard() {
   show('#here-locked', mine === 0);
   show('#here-unlocked', mine > 0);
   if (mine > 0) {
-    const login = user.user_metadata.user_name;
+    const login = user.login;
     // JSON strings are valid YAML, so a name with a colon can't break the front matter
-    const template = `---\nname: ${JSON.stringify(user.user_metadata.full_name || login)}\nrole:\nphoto:\n---\n\n`;
+    const template = `---\nname: ${JSON.stringify(user.name || login)}\nrole:\nphoto:\n---\n\n`;
     const href = `${cfg.repo}/new/main/src/profiles?filename=${encodeURIComponent(login)}.md&value=${encodeURIComponent(template)}`;
     $('#here-profile-link').href = href;
     $('#here-welcome-link').href = href;
@@ -209,9 +237,8 @@ async function bump() {
       if (i) await sleep(2000);
       if (user !== me) return;
       const at = await locate();
-      const { data, error } = await db.rpc('bump', { at_lat: at.lat, at_lng: at.lng });
+      const data = await api('/api/bump', { lat: at.lat, lng: at.lng });
       if (user !== me) return;
-      if (error) throw new Error(error.message);
       if (data.matched) return landed(data.with, wasIn);
       if (!i) say('Now get someone next to you to shake too…');
     }
@@ -316,8 +343,8 @@ async function arm() {
   listen();
 }
 
-async function render(session) {
-  user = session?.user || null;
+async function render(member) {
+  user = member || null;
   disarm();
   checkingIn = false;
   root.classList.remove('here--armed', 'here--checked-in', 'here--waiting', 'here--motion');
@@ -332,9 +359,8 @@ async function render(session) {
   $('#here-title').textContent = user ? 'Check in' : 'Log in';
   if (!user) return say('');
 
-  $('#here-name').textContent = user.user_metadata.full_name || user.user_metadata.user_name;
+  $('#here-name').textContent = user.name || user.login;
   try {
-    await saveMember();
     const { inToday } = await renderBoard();
     const today = nyToday();
     const event = eventOn(today);
@@ -355,27 +381,32 @@ async function render(session) {
   }
 }
 
-if (!configured) {
-  say("Check-in isn't open yet.");
-  console.warn('Check-in is off: supabaseUrl and supabaseAnonKey are empty in src/_data/site.json.');
-} else {
-  $('#here-signin-btn').onclick = signIn;
-  $('#here-signout').onclick = () => db.auth.signOut();
-  $('#here-checkin-btn').onclick = arm;
+$('#here-join').onsubmit = join;
+$('#here-signout').onclick = async () => {
+  await api('/api/signout', {}).catch(() => {});
+  store.set(null);
+  render(null);
+};
+$('#here-checkin-btn').onclick = arm;
 
-  // fires on every token refresh too; only a different user re-renders
-  const changed = userChanges();
-  db.auth.onAuthStateChange((_event, session) => {
-    if (changed(session)) render(session);
-  });
-
-  // live: a new face appears as soon as someone else checks in. Inserts land
-  // close together at a meetup, so they share one refetch.
-  let refetch;
-  db.channel('checkins')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'checkins' }, () => {
-      clearTimeout(refetch);
-      refetch = setTimeout(() => user && renderBoard().catch(e => say(e.message)), 800);
-    })
-    .subscribe();
+// Coming back from Sign in with GitHub: the server hands the session over in
+// the URL fragment, which never reaches any server log.
+const handed = new URLSearchParams(location.hash.slice(1)).get('token');
+if (handed) {
+  store.set(handed);
+  history.replaceState(null, '', location.pathname);
 }
+
+// The free server sleeps when idle and takes a while to wake; this wakes it
+// as the page opens, so the shake later doesn't wait on it.
+say('Waking the check-in server…');
+api('/api/config').then(({ github }) => {
+  show('#here-github', github);
+  if (!store.get()) return render(null);
+  return api('/api/me').then(({ member }) => render(member));
+}).catch(e => say(e.message));
+
+// Faces appear as other people check in.
+setInterval(() => {
+  if (user && !document.hidden && !checkingIn) renderBoard().catch(() => {});
+}, 15000);

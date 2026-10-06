@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nyToday, tally, shakeCounter, userChanges, SHAKES } from '../src/js/checkin.js';
+import { nyToday, tally, shakeCounter, SHAKES } from '../src/js/checkin.js';
 
 const mare = { id: 'u2', name: 'Mare' };
 const iso = { id: 'u1', name: 'Iso' };
@@ -56,15 +56,6 @@ test('gentle movement and missing sensors do not count', () => {
   const step = shakeCounter();
   assert.equal(step(0, { x: 1, y: 2, z: 9.81 }), 0);
   assert.equal(step(500, null), 0);
-});
-
-test('signed out on first load still renders, token refreshes do not', () => {
-  const changed = userChanges();
-  assert.equal(changed(null), true);
-  assert.equal(changed(null), false);
-  assert.equal(changed({ user: { id: 'u1' } }), true);
-  assert.equal(changed({ user: { id: 'u1' } }), false);
-  assert.equal(changed(null), true);
 });
 
 test('the debounce counts at exactly the gap and caps at SHAKES', () => {

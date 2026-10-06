@@ -10,7 +10,12 @@ permalink: /here/
   <p class="here__status" id="here-status" role="status">Loading…</p>
 
   <div id="here-signin" hidden>
-    <button class="here__btn" id="here-signin-btn" type="button">Sign in with GitHub</button>
+    <a class="here__btn" id="here-github" href="{{ site.apiUrl }}/api/auth/github" hidden>Sign in with GitHub</a>
+    <form class="here__join" id="here-join">
+      <label>Your name <input name="name" autocomplete="name" maxlength="40" required></label>
+      <label>GitHub username <input name="github" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="39" required></label>
+      <button class="here__btn" type="submit">Join the squad</button>
+    </form>
   </div>
 
   <div id="here-app" hidden>
@@ -55,5 +60,5 @@ permalink: /here/
   <label class="here__haptic" aria-hidden="true"><input type="checkbox" switch id="haptic" tabindex="-1"></label>
 </div>
 
-<script type="application/json" id="here-config">{{ { supabaseUrl: site.supabaseUrl, supabaseAnonKey: site.supabaseAnonKey, repo: site.repo, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
+<script type="application/json" id="here-config">{{ { apiUrl: site.apiUrl, repo: site.repo, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
 <script type="module" src="/js/here.js"></script>

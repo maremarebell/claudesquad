@@ -2,8 +2,8 @@
 
 export const SHAKES = 3;
 
-// New York's calendar date. Moves together with public.bump() in
-// supabase/migrations, which dates check-ins in the same zone.
+// New York's calendar date. Moves together with POST /api/bump in
+// server/index.mjs, which dates check-ins in the same zone.
 export const nyToday = (date = new Date()) => date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
 // Meetups per member, counting only check-ins on an events.json date, plus who
@@ -35,17 +35,3 @@ export function shakeCounter({ need = SHAKES, within = 1000, gap = 150, threshol
   };
 }
 
-// Supabase fires auth events on every token refresh. This says whether the
-// signed-in user actually changed. Signed out (null) is a real first state,
-// so the first call always counts, whoever it is.
-export function userChanges() {
-  let last;
-  let seen = false;
-  return session => {
-    const id = session?.user?.id ?? null;
-    if (seen && id === last) return false;
-    seen = true;
-    last = id;
-    return true;
-  };
-}

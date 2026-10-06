@@ -1,5 +1,5 @@
 // Network first, cache as the offline fallback. Same-origin GETs only, so
-// Supabase and the CDNs are never served stale.
+// the check-in server and the CDNs are never served stale.
 const CACHE = 'squad';
 
 self.addEventListener('install', () => self.skipWaiting());

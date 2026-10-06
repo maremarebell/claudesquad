@@ -1,21 +1,38 @@
-# Render: the site as a free static site with HTTPS (phones only allow
-# shaking and location over HTTPS), live at https://claudesquad.onrender.com.
-# That service was made in the Render dashboard from the public repo URL with
-# these same settings and headers; Render only reads this file if the repo is
-# connected as a Blueprint, so change both together.
+# Render. Two pieces, both free:
+#
+# - claudesquad-api + claudesquad-db (this Blueprint): the check-in server in
+#   server/ and its Postgres. Render wires DATABASE_URL itself.
+# - claudesquad (static site, made in the dashboard, not in this file): the
+#   11ty site at https://claudesquad.onrender.com. Build `npm ci && npm run
+#   build`, publish `_site`, headers: /sw.js Cache-Control no-cache and
+#   /manifest.webmanifest Content-Type application/manifest+json.
+#
+# Free Postgres on Render expires 30 days after it's created unless it's
+# upgraded (the dashboard warns first). Upgrading keeps the data.
+databases:
+  - name: claudesquad-db
+    plan: free
+    region: oregon
+    databaseName: claudesquad
+    user: claudesquad
+
 services:
   - type: web
-    name: claudesquad
-    runtime: static
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./_site
-    pullRequestPreviewsEnabled: true
-    headers:
-      # the service worker must never be cached, or a fix to it never lands
-      - path: /sw.js
-        name: Cache-Control
-        value: no-cache
-      # Render serves .webmanifest as octet-stream otherwise
-      - path: /manifest.webmanifest
-        name: Content-Type
-        value: application/manifest+json
+    name: claudesquad-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: node index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: claudesquad-db
+          property: connectionString
+      - key: SITE_URL
+        value: https://claudesquad.onrender.com
+      # Sign in with GitHub turns on when GITHUB_CLIENT_ID and GITHUB_SECRET
+      # are set on this service (from a GitHub OAuth app whose callback is
+      # https://claudesquad-api.onrender.com/api/auth/github/callback).

@@ -13,31 +13,22 @@ Builds to `_site/`. See `CONTRIBUTING.md` for how to add a profile or gallery ph
 
 ## Check-in (login, bump, points)
 
-`/here/` is the login page. Sign in with GitHub. On a meetup day, shake your phone at the same time as someone standing next to you, like the old Bump app: two shakes within 20 seconds and 250 metres of each other check you both in. Someone already in can bump a newcomer in. 10 points per meetup. Your first check-in puts an "Add yourself on GitHub" link right there, which opens a PR adding your profile.
+`/here/` is the login page. Join with your name and GitHub username (one tap, no password). On a meetup day, shake your phone at the same time as someone standing next to you, like the old Bump app: two shakes within 20 seconds and 250 metres of each other check you both in. Someone already in can bump a newcomer in. 10 points per meetup. Your first check-in puts an "Add yourself on GitHub" link right there, which opens a PR adding your profile.
 
-The matching happens in the database (`public.bump()` in `supabase/migrations/`), so nobody can check in alone or from home. Locations are deleted after an hour and nobody can read them.
+The check-in server is `server/` (Node + Postgres), hosted on Render next to the site; `render.yaml` describes it. Matching happens on the server, so nobody can check in alone or from home. Locations are deleted after an hour and never sent to anyone.
 
-### Turning it on
-
-1. Make a Supabase access token at https://supabase.com/dashboard/account/tokens, then run:
-
-   ```
-   SUPABASE_ACCESS_TOKEN=... node scripts/setup-supabase.mjs
-   ```
-
-   It creates the `claudesquad` project, applies the migrations, and writes the URL and anon key into `src/_data/site.json`. It prints the GitHub OAuth app values for step 2.
-2. Make that GitHub OAuth app at https://github.com/settings/applications/new, then run the same command again with `GITHUB_CLIENT_ID=... GITHUB_SECRET=...` in front. Sign-in returns to https://claudesquad.onrender.com/here/ (and `localhost:8080` for dev); `SITE_URL=...` changes that.
-
-Until then `/here/` says "Check-in isn't open yet."
+A GitHub username can only be joined once by typing it. Once a GitHub OAuth app is set up (callback `https://claudesquad-api.onrender.com/api/auth/github/callback`) and its `GITHUB_CLIENT_ID` and `GITHUB_SECRET` are added to the `claudesquad-api` service on Render, a "Sign in with GitHub" button appears, and that's how people get back in on a new phone.
 
 ### Hosting
 
-Render static site at https://claudesquad.onrender.com (settings in `render.yaml`). Phones need it: shaking and location only work over HTTPS. Render can't see pushes to this repo yet, so deploy with Manual Deploy in the Render dashboard until the Render GitHub app is installed on the repo.
+Render, all free: the static site at https://claudesquad.onrender.com, the server at https://claudesquad-api.onrender.com, and its Postgres. Phones need the HTTPS site: shaking and location only work there. The free server sleeps when idle and takes up to a minute to wake, so the check-in page wakes it as it opens. Render's free Postgres expires 30 days after it's created unless it's upgraded.
+
+Render can't see pushes to this repo yet, so deploy with Manual Deploy in the Render dashboard until the Render GitHub app is installed on the repo.
 
 ### Testing locally
 
 ```
-npm test                         # unit tests, no network
-npx supabase start               # local Supabase in Docker, applies the migrations
-node scripts/bump-e2e.mjs        # logins, members and bumps against it
+npm test                                   # unit tests, no network
+docker run -d --rm --name sq-pg -e POSTGRES_PASSWORD=local -p 55432:5432 postgres:16-alpine
+(cd server && npm ci) && node server/e2e.mjs   # join, bumps, matching, CORS, sign-out
 ```

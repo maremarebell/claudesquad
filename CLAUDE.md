@@ -13,9 +13,9 @@ npm run build   # outputs to _site/
 ## Structure
 
 - `src/index.njk` — homepage: 3D hero (`src/js/hero.js`, raw three.js from an importmap) with the next meetup overlaid, intro copy, photo gallery (sorted by date, newest first). Without WebGL the flat `logo.jpg` shows instead.
-- `src/here.njk` + `src/js/here.js` — `/here/`, login + check-in: GitHub sign-in through Supabase. Check-in is a Bump: on a meetup day a pixel pig (SVG, same bitmap as the hero) waits; tap arms motion and location, 3 shakes call the `bump()` RPC, and two bumps within 20s and 250m check both people in (server-side, the only way a check-in row gets written). Someone already in can bump a newcomer in. Tap works instead of shaking when motion is denied or silent. First check-in shows an "Add yourself on GitHub" card. 10 points per check-in on an `events.json` date. Schema, RLS and `bump()` live in `supabase/migrations/`; setup is `scripts/setup-supabase.mjs` (README).
+- `src/here.njk` + `src/js/here.js` — `/here/`, login + check-in against the check-in server (`site.apiUrl`). Join = name + GitHub username, session token in localStorage; Sign in with GitHub appears when the server has GitHub OAuth env vars. Check-in is a Bump: on a meetup day a pixel pig (SVG, same bitmap as the hero) waits; tap arms motion and location, 3 shakes POST `/api/bump`, and two bumps within 20s and 250m check both people in (server-side, the only way a check-in row is written). Someone already in can bump a newcomer in. Tap works instead of shaking when motion is denied or silent. First check-in shows an "Add yourself on GitHub" card. 10 points per check-in on an `events.json` date.
+- `server/` — the check-in server: plain Node `http` + `pg`, schema in `server/schema.sql` (applied on every start, create-if-missing). Routes are listed at the top of `server/index.mjs`. `server/e2e.mjs` tests it against a local Postgres in Docker.
 - `src/js/hero.js` lifecycle (reduced motion, background tabs, lost WebGL context falling back to the flat logo, ring framing at phone and desktop widths) is covered by `test/hero.test.cjs`, which runs the file against stubs, no GPU.
-- `scripts/bump-e2e.mjs` — logins, member rows, RLS and bump matching against the local Supabase (`npx supabase start`, needs Docker/colima). Refuses to run against anything but localhost.
 - `src/js/checkin.js` — the pure rules (New York date, tally, shake counter), tested by `npm test` (`node --test`, no dependencies).
 - `src/manifest.webmanifest` + `src/sw.js` — PWA, starts at `/here/`. The worker is network-first and same-origin only.
 - `src/calendar.njk` — calendar page, entirely data-driven (see below)
@@ -28,7 +28,7 @@ npm run build   # outputs to _site/
 
 ### `src/_data/` (11ty global data)
 
-- `site.json` — `{ whatsappLink, repo, supabaseUrl, supabaseAnonKey }`. Empty Supabase values make `/here/` say "Check-in isn't open yet." (and warn in the console). Currently always set to a real invite link; there's no "link missing" fallback anywhere anymore (it was removed on purpose — see git log "Remove the no-link fallback for the WhatsApp button"). If this ever needs to go back to being optional, that pattern would need re-adding in `base.njk`.
+- `site.json` — `{ whatsappLink, repo, apiUrl }`. `apiUrl` is the check-in server. Currently always set to a real invite link; there's no "link missing" fallback anywhere anymore (it was removed on purpose — see git log "Remove the no-link fallback for the WhatsApp button"). If this ever needs to go back to being optional, that pattern would need re-adding in `base.njk`.
 - `events.json` — the single source of truth for all meetups. Each entry: `date` (`YYYY-MM-DD`), `title`, `emoji` (optional), `color` (optional, defaults to `var(--accent)`), `partiful` (URL or `null`). This is the file to edit when meetups are added/changed — nothing else needs touching.
 - `calendarMonths.js` — computes the calendar grid *from* `events.json`. Key behavior: it only renders 3-month blocks for quarters that actually contain an event (sorted chronologically), **not** a rolling window based on today's date. The next quarter only appears once an event is added to it — this was an explicit user request, don't "fix" it back to date-based rolling. Falls back to today's quarter if `events.json` is ever empty. Also flags `isPast` per month (fully-elapsed months) for the gray-out/mobile-hide behavior in CSS.
 - `nextEvent.js` — soonest event on/after today, used by the homepage hero. Returns `null` if nothing upcoming (the meetup block just doesn't render).
@@ -49,7 +49,7 @@ npm run build   # outputs to _site/
 - Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
 - Git: remote is github.com/maremarebell/claudesquad.
-- Deploy: Render static site, https://claudesquad.onrender.com, building `claudesquad-3d-attendance` (switch it to `main` in Render settings once the PR merges). Render has no access to the repo (it's maremarebell's), so pushes do NOT auto-deploy: use Manual Deploy in the dashboard, or have maremarebell install the Render GitHub app. Settings and headers mirror `render.yaml`.
+- Deploy: Render, all free. Static site `claudesquad` (https://claudesquad.onrender.com, made in the dashboard, builds `claudesquad-3d-attendance`; switch to `main` once the PR merges), plus the Blueprint in `render.yaml`: `claudesquad-api` (server/) and `claudesquad-db` (Postgres, free tier expires 30 days after creation unless upgraded). Render has no access to the repo (it's maremarebell's), so pushes do NOT auto-deploy: Manual Deploy in the dashboard, or have maremarebell install the Render GitHub app.
 
 ## TODO
 
