@@ -6,10 +6,11 @@
 #   build`, publish `_site`, headers: /sw.js Cache-Control no-cache and
 #   /manifest.webmanifest Content-Type application/manifest+json.
 #
-# The database: the workspace's existing Postgres, meridian-db (Render allows
-# one free database per workspace and Meridian has it). Check-in keeps all its
-# tables in its own schema, claudesquad, so neither project touches the
-# other's. Render fills DATABASE_URL from it; nothing secret is in this file.
+# The database is not decided yet: Render allows one free database per
+# workspace and Meridian has it. DATABASE_URL is set on claudesquad-api by
+# hand (sync: false keeps it out of this public file), pointing at any
+# Postgres; the server keeps its tables in schema DB_SCHEMA and creates them
+# on start.
 
 services:
   - type: web
@@ -23,9 +24,7 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: meridian-db
-          property: connectionString
+        sync: false
       - key: DB_SCHEMA
         value: claudesquad
       - key: SITE_URL

@@ -21,7 +21,7 @@ A GitHub username can only be joined once by typing it. Once a GitHub OAuth app 
 
 ### Hosting
 
-Free: the static site at https://claudesquad.onrender.com and the server at https://claudesquad-api.onrender.com on Render, with the server's tables in their own `claudesquad` schema inside the workspace's existing Postgres (`meridian-db`; Render allows one free database per workspace). Phones need the HTTPS site: shaking and location only work there. The free server sleeps when idle and takes up to a minute to wake, so the check-in page wakes it as it opens.
+Free: the static site at https://claudesquad.onrender.com and the server at https://claudesquad-api.onrender.com on Render, with the server's tables in their own `claudesquad` schema in whatever Postgres `DATABASE_URL` points at (not chosen yet: Render allows one free database per workspace and Meridian has it). Phones need the HTTPS site: shaking and location only work there. The free server sleeps when idle and takes up to a minute to wake, so the check-in page wakes it as it opens.
 
 Render can't see pushes to this repo yet, so deploy with Manual Deploy in the Render dashboard until the Render GitHub app is installed on the repo.
 
