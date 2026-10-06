@@ -43,6 +43,8 @@ function drawPig() {
     ch === '#' ? `<rect x="${c}" y="${r}" width="1" height="1"/>` : '')).join('');
   $('#here-pig').innerHTML = `
     <svg viewBox="-1 -3 36 22" shape-rendering="crispEdges">
+      <g class="pig__z"><rect x="27" y="-3" width="2" height="1"/><rect x="28" y="-2" width="1" height="1"/><rect x="27" y="-1" width="2" height="1"/></g>
+      <g class="pig__z pig__z--2"><rect x="30" y="-6" width="3" height="1"/><rect x="31" y="-5" width="1" height="1"/><rect x="30" y="-4" width="3" height="1"/></g>
       ${cells}
       <rect class="pig__lid" x="13" y="10" width="1" height="2"/>
       <rect class="pig__lid" x="20" y="10" width="1" height="2"/>
@@ -106,7 +108,7 @@ async function join(e) {
     store.set(token);
     buzz(30);
     await render(member);
-    say(`Welcome, ${member.name}.`);
+    say(`Welcome, ${member.name}. ${$('#here-status').textContent}`);
   } catch (err) {
     say(err.message);
   } finally {
@@ -151,6 +153,19 @@ async function mergedPRs() {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+// Points tick up to their new value instead of jumping.
+function countTo(el, to) {
+  const from = Number(el.textContent) || 0;
+  if (REDUCED.matches || from === to) return void (el.textContent = to);
+  const start = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - start) / 600);
+    el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
 async function renderBoard() {
   const today = nyToday();
   const [data, members, prs] = await Promise.all([
@@ -163,7 +178,7 @@ async function renderBoard() {
   const rows = leaderboard(members, meetups, prs);
   const me = rows.find(r => r.member.id === user.id) || { meetups: 0, prs: 0, points: 0 };
   const mine = me.meetups;
-  $('#here-points').textContent = me.points;
+  countTo($('#here-points'), me.points);
   $('#here-tally').textContent = `${plural(me.meetups, 'meetup')} · ${plural(me.prs, 'PR')}`;
 
   $('#here-faces').replaceChildren(...present.map(avatar));
@@ -379,7 +394,7 @@ async function render(member) {
   user = member || null;
   disarm();
   checkingIn = false;
-  root.classList.remove('here--armed', 'here--checked-in', 'here--waiting', 'here--motion');
+  root.classList.remove('here--armed', 'here--checked-in', 'here--waiting', 'here--motion', 'here--sleeping');
   const btn = $('#here-checkin-btn');
   btn.hidden = false;
   btn.disabled = false;
@@ -397,8 +412,10 @@ async function render(member) {
     const today = nyToday();
     const event = eventOn(today);
     const next = nextAfter(today);
-    // already in? the pig stays out, so you can bump a newcomer in
-    show('#here-checkin', !!event);
+    // the pig is always out: bumping on a meetup day (already in? bump a
+    // newcomer in), asleep on the other days
+    show('#here-checkin', true);
+    root.classList.toggle('here--sleeping', !event);
     if (inToday) {
       root.classList.add('here--checked-in');
       btn.textContent = 'Bump someone in';

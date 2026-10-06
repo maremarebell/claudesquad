@@ -656,7 +656,15 @@ h2 {
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s;
+  /* a game button: sits on a darker edge and presses down into it */
+  box-shadow: 0 4px 0 var(--accent-dark);
+  margin-bottom: 4px;
+  transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
+}
+
+.here__btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 var(--accent-dark);
 }
 
 .here__btn::after {
@@ -760,6 +768,51 @@ h2 {
 
 @keyframes bob {
   to { transform: translateY(-4px); }
+}
+
+/* idle: the pig breathes */
+.here__pig svg {
+  animation: breathe 3.2s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+
+@keyframes breathe {
+  50% { transform: scale(1.015, 0.985); }
+}
+
+/* no meetup today: eyes shut, Zs drifting up, nothing to press */
+.pig__z {
+  display: none;
+  fill: var(--ink);
+}
+
+.here--sleeping .pig__z {
+  display: inline;
+  animation: zzz 2.4s ease-out infinite;
+}
+
+.here--sleeping .pig__z--2 {
+  animation-delay: 1.2s;
+}
+
+@keyframes zzz {
+  from { opacity: 0; transform: translate(0, 2px); }
+  30% { opacity: 1; }
+  to { opacity: 0; transform: translate(3px, -4px); }
+}
+
+.here--sleeping .pig__lid {
+  animation: none;
+  opacity: 1;
+}
+
+.here--sleeping .here__pips,
+.here--sleeping .here__btn--checkin {
+  display: none;
+}
+
+.here--sleeping .here__pig svg {
+  animation-duration: 5s;
 }
 
 /* checked in: happy eyes */
@@ -928,8 +981,32 @@ h2 {
 .here__face {
   width: 44px;
   height: 44px;
-  border: 1px solid var(--accent);
-  image-rendering: pixelated;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  background: var(--card-bg);
+  object-fit: cover;
+}
+
+/* today's faces are stickers, each stuck on at its own slight angle */
+.here__faces .here__face {
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--ink);
+  box-shadow: 0 0 0 2px var(--accent);
+  transform: rotate(-5deg);
+  transition: transform 0.2s;
+}
+
+.here__faces .here__face:nth-child(even) {
+  transform: rotate(4deg);
+}
+
+.here__faces .here__face:nth-child(3n) {
+  transform: rotate(-2deg) translateY(3px);
+}
+
+.here__faces .here__face:hover {
+  transform: rotate(0) scale(1.1);
 }
 
 .here__board {
@@ -959,6 +1036,17 @@ h2 {
   background: var(--accent);
   color: var(--on-accent);
   padding-inline: var(--space-2xs);
+}
+
+.here__board li:first-child span::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  margin-right: 6px;
+  background: var(--on-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1V0h1v2h1V1h1V0h1v5H0z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 7 5' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h1v1h1v1h1V0h1v2h1V1h1V0h1v5H0z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .here__board li:first-child::before {
@@ -1003,6 +1091,8 @@ h2 {
   .here--armed .here__btn--checkin:disabled,
   .here--armed .here__pig,
   .here--waiting .here__pig,
+  .here__pig svg,
+  .here--sleeping .pig__z,
   .pig__lid,
   .here--checked-in .here__points,
   .here__status::after {
