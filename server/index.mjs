@@ -38,14 +38,31 @@ const connection = {
   ssl: /localhost|127\.0\.0\.1/.test(DATABASE_URL || '') || !/\./.test(new URL(DATABASE_URL || 'postgres://x').hostname)
     ? false : { rejectUnauthorized: false },
 };
-{
-  const setup = new pg.Client(connection);
-  await setup.connect();
-  await setup.query(`create schema if not exists ${SCHEMA}`);
-  await setup.end();
-}
 const db = new pg.Pool({ ...connection, options: `-c search_path=${SCHEMA}` });
-await db.query(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+
+// The port opens first and the database is set up after, retrying, so a
+// missing or sleeping database shows up as a clear 503 instead of a server
+// that never answers.
+let ready = false;
+let dbError = DATABASE_URL ? 'connecting to the database' : 'DATABASE_URL is not set';
+async function setUp() {
+  if (!DATABASE_URL) return;
+  for (let wait = 1000; !ready; wait = Math.min(wait * 2, 30000)) {
+    try {
+      const setup = new pg.Client(connection);
+      await setup.connect();
+      await setup.query(`create schema if not exists ${SCHEMA}`);
+      await setup.end();
+      await db.query(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+      ready = true;
+      console.log('database ready');
+    } catch (e) {
+      dbError = `database: ${e.message}`;
+      console.error(dbError);
+      await new Promise(r => setTimeout(r, wait));
+    }
+  }
+}
 
 const hash = token => createHash('sha256').update(token).digest('hex');
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
@@ -242,6 +259,11 @@ const routes = {
   },
 
   'GET /api/health': async () => ({ ok: true }),
+  // ready only once the database is: what a deploy check or a person should look at
+  'GET /api/ready': async () => {
+    if (!ready) throw new Oops(503, dbError);
+    return { ok: true };
+  },
 };
 
 http.createServer(async (req, res) => {
@@ -257,6 +279,7 @@ http.createServer(async (req, res) => {
   const route = routes[`${req.method} ${url.pathname}`];
   try {
     if (!route) throw new Oops(404, 'not found');
+    if (!ready && !/^\/api\/(health|ready)$/.test(url.pathname)) throw new Oops(503, "Check-in isn't open yet.");
     const out = await route(req, res, url);
     if (!res.headersSent) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -270,4 +293,7 @@ http.createServer(async (req, res) => {
       res.end(JSON.stringify({ error: status === 500 ? 'Something broke on the server.' : e.message }));
     }
   }
-}).listen(PORT, () => console.log(`check-in server on ${PORT}${github ? ', GitHub sign-in on' : ''}`));
+}).listen(PORT, () => {
+  console.log(`check-in server on ${PORT}${github ? ', GitHub sign-in on' : ''}`);
+  setUp();
+});

@@ -17,6 +17,9 @@ const server = spawn('node', [new URL('./index.mjs', import.meta.url).pathname],
   stdio: ['ignore', 'pipe', 'inherit'],
 });
 await new Promise(r => server.stdout.once('data', r));
+for (let i = 0; i < 50 && (await fetch(`${API}/api/ready`).catch(() => ({})).then(r => r.status)) !== 200; i++) {
+  await new Promise(r => setTimeout(r, 200));
+}
 
 async function call(path, { token, method = 'GET', body, origin } = {}) {
   const res = await fetch(API + path, {
