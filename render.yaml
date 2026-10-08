@@ -6,11 +6,10 @@
 #   build`, publish `_site`, headers: /sw.js Cache-Control no-cache and
 #   /manifest.webmanifest Content-Type application/manifest+json.
 #
-# The database is not decided yet: Render allows one free database per
-# workspace and Meridian has it. DATABASE_URL is set on claudesquad-api by
-# hand (sync: false keeps it out of this public file), pointing at any
-# Postgres; the server keeps its tables in schema DB_SCHEMA and creates them
-# on start.
+# The database is the Neon project "claudesquad" (Render's one free database
+# slot is Meridian's). DATABASE_URL is set on claudesquad-api by hand (sync:
+# false keeps it out of this public file); the server keeps its tables in
+# schema DB_SCHEMA and creates them on start.
 
 services:
   - type: web
