@@ -335,6 +335,53 @@ mark {
   }
 }
 
+/* Page morphs (View Transitions, Chrome and Safari; elsewhere pages just
+   change). The page glides across, the title morphs into the next title,
+   the nav brackets slide to the link you tapped, the header pig holds still. */
+@view-transition {
+  navigation: auto;
+}
+
+.header__logo-img {
+  view-transition-name: pig;
+}
+
+main h1 {
+  view-transition-name: page-title;
+}
+
+.nav__link[aria-current] {
+  view-transition-name: nav-current;
+}
+
+::view-transition-group(page-title),
+::view-transition-group(nav-current) {
+  animation-duration: 0.45s;
+  animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+}
+
+::view-transition-old(root) {
+  animation: page-out 0.32s cubic-bezier(.4, 0, 1, 1) both;
+}
+
+::view-transition-new(root) {
+  animation: page-in 0.45s cubic-bezier(0, 0, .2, 1) both;
+}
+
+@keyframes page-out {
+  to { opacity: 0; transform: translateX(-24px) scale(.985); }
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateX(32px) scale(.985); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+
 /* Main Content */
 .main {
   flex: 1;
