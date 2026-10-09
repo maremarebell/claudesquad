@@ -235,7 +235,7 @@ mark {
   color: var(--accent);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .header__logo-text {
     display: none;
   }
@@ -295,7 +295,7 @@ mark {
   color: var(--accent);
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .nav__link {
     padding: 0 var(--space-3xs);
     font-size: 11px;
@@ -304,19 +304,6 @@ mark {
 
   .header__logo-img {
     height: 28px;
-  }
-}
-
-/* the smallest phones (iPhone SE 1st gen, 320px): tighter still */
-@media (max-width: 340px) {
-  .nav__link {
-    padding: 0 2px;
-    font-size: 10px;
-    letter-spacing: 0;
-  }
-
-  .header__logo-img {
-    height: 22px;
   }
 
   /* one line of topbar on a phone instead of two */
@@ -332,6 +319,19 @@ mark {
   .nav__link::before,
   .nav__link::after {
     display: none;
+  }
+}
+
+/* the smallest phones (iPhone SE 1st gen, 320px): tighter still */
+@media (max-width: 340px) {
+  .nav__link {
+    padding: 0 2px;
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  .header__logo-img {
+    height: 22px;
   }
 }
 
