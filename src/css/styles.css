@@ -731,7 +731,7 @@ h2 {
   cursor: pointer;
   /* a game button: sits on a darker edge and presses down into it */
   box-shadow: 0 4px 0 var(--accent-dark);
-  margin-bottom: 4px;
+  margin-bottom: var(--space-3xs);
   transition: background 0.15s, transform 0.08s, box-shadow 0.08s;
 }
 
@@ -1409,6 +1409,11 @@ h2 {
   border-top: 1px solid var(--rule);
 }
 
+/* no rows yet: just the rule, with the status right under it */
+.content .board__list:empty {
+  padding-block: 0;
+}
+
 .content .board__list li {
   padding-left: 0;
 }
@@ -1516,7 +1521,7 @@ h2 {
 }
 
 .content p.board__status {
-  padding: var(--space-md) 0;
+  padding-top: var(--space-sm);
   color: var(--ink-muted);
 }
 
@@ -1597,11 +1602,10 @@ h2 {
   margin-bottom: var(--space-xl);
 }
 
-.content > div .working__title,
 .content .working__title,
 .content .projects__title {
   position: static;
-  margin: 0 0 var(--space-sm);
+  margin: 0 0 var(--space-md);
   padding: 0;
   border: 0;
 }
@@ -1651,6 +1655,10 @@ h2 {
 .working__feed {
   list-style: none;
   margin-top: var(--space-md);
+}
+
+.working__feed:empty {
+  display: none;
 }
 
 .content .working__feed li {
@@ -2038,7 +2046,7 @@ h2 {
 .calendar__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+  gap: var(--space-md);
 }
 
 .calendar__month-block {
@@ -2052,7 +2060,7 @@ h2 {
 }
 
 .calendar__month-header {
-  padding: 10px 13px;
+  padding: var(--space-2xs) var(--space-xs);
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
@@ -2141,7 +2149,7 @@ h2 {
 
 .calendar__day:hover:not(.calendar__day--empty) {
   border-color: var(--accent);
-  z-index: 1;
+  z-index: var(--z-scene);
 }
 
 .calendar__day--today {
@@ -2167,7 +2175,7 @@ h2 {
   transform: translateX(-50%);
   background-color: var(--ink);
   color: #1a1410;
-  padding: 6px 10px;
+  padding: var(--space-2xs) var(--space-xs);
   font-size: var(--text-2xs);
   width: max-content;
   max-width: min(220px, 60vw);
@@ -2209,7 +2217,7 @@ h2 {
   transform: translateX(-50%);
   background-color: var(--ink);
   color: #1a1410;
-  padding: 6px 10px;
+  padding: var(--space-2xs) var(--space-xs);
   font-size: var(--text-2xs);
   width: max-content;
   max-width: min(220px, 60vw);
