@@ -2263,3 +2263,47 @@ h2 {
     font-size: var(--text-xl);
   }
 }
+
+/* Fingers: every control is at least 44px to tap. Where growing the box
+   would push the layout around, an invisible ::after grows the hit area. */
+@media (pointer: coarse) {
+  .hero__cta {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .calendar__day {
+    height: 44px;
+  }
+
+  /* above the hero canvas, which would otherwise take the bottom of the
+     WhatsApp button's tap area */
+  .topbar {
+    position: relative;
+    z-index: var(--z-overlay);
+  }
+
+  .topbar__button,
+  .header__brand,
+  .project__name a {
+    position: relative;
+  }
+
+  .topbar__button::after,
+  .header__brand::after,
+  .project__name a::after {
+    content: '';
+    position: absolute;
+    inset: -11px -4px;
+  }
+}
+
+/* A phone on its side: the hero fits under the header and topbar (112px
+   there) so the next meetup is on screen without scrolling. After the
+   phone-width rules so it wins over them. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .hero {
+    height: calc(100svh - 112px);
+    min-height: 260px;
+  }
+}
