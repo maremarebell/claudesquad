@@ -1,6 +1,6 @@
 # Claude Squad site
 
-Static site for Claude Squad (NYC fitness + computing crew). Eleventy (11ty) v2, Nunjucks templates, one hand-written stylesheet, no JS framework, no build step beyond 11ty itself.
+Static site for Claude Squad (NYC fitness + computing crew). Eleventy (11ty) v2, Nunjucks templates, one hand-written stylesheet (type sizes are the `--text-*` rem scale in `:root`), no JS framework, no build step beyond 11ty itself.
 
 ## Commands
 
@@ -19,7 +19,8 @@ npm run build   # outputs to _site/
 - `src/js/checkin.js` — the pure rules (New York date, tally, shake counter), tested by `npm test` (`node --test`, no dependencies).
 - `src/manifest.webmanifest` + `src/sw.js` — PWA, starts at `/here/`. The worker is network-first and same-origin only.
 - `src/calendar.njk` — calendar page, entirely data-driven (see below)
-- `src/js/pig3d.js` — the 3D check-in pig (voxels from `src/js/pig.js`): idle breathing and turn, hop per shake, spin + voxel confetti on a match, lies down asleep on non-meetup days, drag to turn. Loaded lazily by `here.js`; the SVG pig stays where WebGL fails or motion is reduced. Hero: the pig assembles from flying voxels on load (`placePig` in `hero.js`), scrolling blows it apart, tips it back and pulls the camera away; reduced motion shows it whole. /here/ match: `src/js/collide.js` smashes both faces together. Pages morph with cross-document View Transitions (`@view-transition` in `styles.css`). Sections swing up in 3D as they enter; the footer slab is extruded with text-shadows and tilts to the pointer or phone tilt.
+- `src/js/pig3d.js` — the 3D check-in pig (voxels from `src/js/pig.js`): idle breathing and turn, hop per shake, spin + voxel confetti on a match, lies down asleep on non-meetup days, drag to turn. Loaded lazily by `here.js`; the SVG pig stays where WebGL fails or motion is reduced. Sections swing up in 3D as they enter; the footer slab is extruded with text-shadows and tilts to the pointer or phone tilt.
+- Motion: the hero pig assembles from flying voxels on load (`placePig` in `hero.js`), scrolling blows it apart, tips it back and pulls the camera away; reduced motion shows it whole. On a /here/ match `src/js/collide.js` smashes both faces together (`onImpact` times the buzz). Pages morph with cross-document View Transitions (`@view-transition` in `styles.css`). Sections swing up in 3D as they enter; the footer slab is extruded with text-shadows and tilts to the pointer or phone tilt.
 - `src/js/squad.js` — shared by every page that talks to the server: `API` (`site.apiUrl` via `<meta name="squad-api">`, or `http://localhost:10124` when the site runs on localhost), the session token (`localStorage['squad-token']`), `api()`, `mergedPRs()`, `countTo()`, `avatar()` (falls back to the pig).
 - Homepage leaderboard (`#board`, `src/js/board.js`): public, `GET /api/leaderboard` + GitHub PR counts, bars grow when on screen, refreshes every 30s.
 - `/admin/` (`src/admin.njk`, not in the nav, noindex): a Partiful field per meetup; Save copies the updated `events.json` and opens it in GitHub's editor. GitHub decides who can commit it.

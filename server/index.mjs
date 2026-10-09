@@ -7,7 +7,7 @@
 //   GET  /api/me                                      -> { member }
 //   GET  /api/members                                 -> [member]
 //   GET  /api/board?dates=2026-10-15,...              -> [{ event_date, members }]
-//   POST /api/bump            { lat, lng }            -> { matched, with }
+//   POST /api/bump            { lat, lng }            -> { matched, members: [{ name, avatar_url }] }
 //   GET  /api/leaderboard?dates=...                   -> [{ ...member, meetups }]   (public)
 //   GET  /api/posts                                   -> latest 50 posts            (public)
 //   POST /api/posts           { body, link }          -> post
@@ -249,9 +249,9 @@ const routes = {
            on conflict do nothing`, [[me.id, ...rows.map(r => r.member_id)]]);
       }
       await client.query('commit');
-      // `members` carries faces for the collision on the phone; `with` stays for old clients
+      // names and faces, for the collision on the phone
       return rows.length
-        ? { matched: true, with: rows.map(r => r.name).sort(), members: rows.map(r => ({ name: r.name, avatar_url: r.avatar_url })) }
+        ? { matched: true, members: rows.map(r => ({ name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
         : { matched: false };
     } catch (e) {
       await client.query('rollback');

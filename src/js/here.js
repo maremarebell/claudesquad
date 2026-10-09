@@ -220,7 +220,7 @@ async function bump() {
       const at = await locate();
       const data = await api('/api/bump', { lat: at.lat, lng: at.lng });
       if (user !== me) return;
-      if (data.matched) return landed(data.with, wasIn, data.members);
+      if (data.matched) return landed(data.members, wasIn);
       if (!i) say('Now get someone next to you to shake too…');
     }
     rearm('Nobody shook back. Shake together, at the same time.');
@@ -231,21 +231,16 @@ async function bump() {
 
 // Matched. Celebrate, and on someone's first meetup put the GitHub link
 // right there, because that's the moment they're in the squad.
-async function landed(names, wasIn, members) {
+async function landed(members, wasIn) {
   const me = user;
-  // the collision plays while the board refreshes underneath it
-  collide({
-    me: { name: me.name, avatar_url: me.avatar_url },
-    them: members?.length ? members : (names || []).map(name => ({ name, avatar_url: '/images/pig.svg' })),
-    reduced: REDUCED.matches,
-    shake: root,
-  });
-  // two heavy hits, timed to land with the faces
-  setTimeout(() => buzz([90, 70, 160]), 420);
+  const names = members.map(m => m.name);
+  // the collision plays while the board refreshes underneath it; two heavy
+  // hits land with the faces
+  collide({ me, them: members, reduced: REDUCED.matches, shake: root, onImpact: () => buzz([90, 70, 160]) });
   root.classList.remove('here--waiting', 'here--armed');
   root.classList.add('here--checked-in');
   if (!wasIn) $('#here-checkin-btn').hidden = true;
-  const who = names?.length ? ` with ${names.join(', ')}` : '';
+  const who = names.length ? ` with ${names.join(', ')}` : '';
   let mine = 0;
   try {
     ({ mine } = await renderBoard());

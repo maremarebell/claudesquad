@@ -74,7 +74,6 @@ await check('a bump alone waits; someone far away does not match', async () => {
 
 await check('two people shaking together nearby both get checked in', async () => {
   const r = await call('/api/bump', { method: 'POST', token: ben.token, body: nearby });
-  assert.deepEqual(r.body.with, ['Ana']);
   assert.deepEqual(r.body.members, [{ name: 'Ana', avatar_url: 'https://github.com/ana-gh.png?size=96' }]);
   const board = await call(`/api/board?dates=${today}`, { token: cy.token });
   assert.deepEqual(board.body.map(row => row.members.name).sort(), ['Ana', 'Ben']);
@@ -85,7 +84,7 @@ await check('a bump over 20s old does not match; someone already in can bring a 
   sql("update claudesquad.bumps set at = now() - interval '30 seconds';");
   assert.equal((await call('/api/bump', { method: 'POST', token: cy.token, body: gym })).body.matched, false);
   const r = await call('/api/bump', { method: 'POST', token: ana.token, body: nearby });
-  assert.deepEqual(r.body.with, ['Cy']);
+  assert.deepEqual(r.body.members.map(m => m.name), ['Cy']);
   assert.equal(sql(`select count(*) from claudesquad.checkins;`), '3');
 });
 

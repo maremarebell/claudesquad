@@ -31,6 +31,10 @@ const PIG = [
 ];
 const VOXEL = 0.1;
 
+// the pig assembles on load: voxels set off over STAGGER seconds and each
+// takes GATHER seconds to fly home
+const STAGGER = 0.9, GATHER = 1.3;
+
 function buildPig() {
   const cells = [];
   PIG.forEach((row, r) => [...row].forEach((ch, c) => {
@@ -54,8 +58,6 @@ function buildPig() {
     new THREE.MeshStandardMaterial({ color: ACCENT, roughness: 0.38, metalness: 0.18, emissive: ACCENT, emissiveIntensity: 0.08 }),
     cells.length,
   );
-  const m = new THREE.Matrix4();
-  cells.forEach(([x, y], i) => mesh.setMatrixAt(i, m.makeTranslation(x, y, 0)));
   // Where each voxel starts (scattered debris it flies in from), when it sets
   // off, and which way it flies when scrolling blows the pig apart.
   mesh.userData.cells = cells.map(([x, y]) => {
@@ -65,7 +67,7 @@ function buildPig() {
     return {
       home: new THREE.Vector3(x, y, 0),
       from: new THREE.Vector3(Math.sin(b) * Math.cos(a) * r, Math.sin(b) * Math.sin(a) * r, Math.cos(b) * r),
-      delay: Math.random() * 0.9,
+      delay: Math.random() * STAGGER,
       out: out.multiplyScalar(1.2 + Math.random() * 1.6),
       spin: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(9),
     };
@@ -75,20 +77,21 @@ function buildPig() {
 
 // Place every voxel for this moment: gathering in from the debris over the
 // first couple of seconds, and flung outward by however far the page has
-// scrolled. Skips the work once the pig is whole and at rest.
+// scrolled. Skips the work while nothing has moved since the last frame.
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _p = new THREE.Vector3(), _s = new THREE.Vector3(1, 1, 1);
 function placePig(mesh, t, burst, settled) {
   const at = mesh.userData;
-  if (settled && burst < 0.002 && at.rested) return;
-  at.rested = settled && burst < 0.002;
-  at.cells.forEach((c, i) => {
-    const k = settled ? 1 : Math.min(1, Math.max(0, (t - c.delay) / 1.3));
+  if (settled && Math.abs(burst - at.burst) < 1e-4) return;
+  at.burst = settled ? burst : NaN;
+  for (let i = 0; i < at.cells.length; i++) {
+    const c = at.cells[i];
+    const k = settled ? 1 : Math.min(1, Math.max(0, (t - c.delay) / GATHER));
     const e = 1 - (1 - k) ** 3;
     const loose = (1 - e) + burst;
     _p.copy(c.home).lerp(c.from, 1 - e).addScaledVector(c.out, burst);
     _e.set(c.spin.x * loose, c.spin.y * loose, c.spin.z * loose);
     mesh.setMatrixAt(i, _m.compose(_p, _q.setFromEuler(_e), _s));
-  });
+  }
   mesh.instanceMatrix.needsUpdate = true;
 }
 
@@ -281,7 +284,7 @@ function start() {
     camera.position.set(Math.sin(az) * d, 0.2 + Math.sin(t * 0.2) * 0.12 - lean.y * 1.1, Math.cos(az) * d);
     camera.lookAt(0, 0, 0);
 
-    placePig(pig, t, motion.matches ? 0 : scrolled * 0.8, motion.matches || t > 2.3);
+    placePig(pig, t, motion.matches ? 0 : scrolled * 0.8, motion.matches || t > STAGGER + GATHER);
     pig.position.y = Math.sin(t * 0.8) * 0.06 + lift + scrolled * 0.6;
     pig.rotation.x = -scrolled * 0.9;
     lights.forEach(l => { l.intensity = 8 + 10 * flare; });
