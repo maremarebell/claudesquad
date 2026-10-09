@@ -51,7 +51,7 @@ function mount({ reduced = false, width = 1280, fail = false } = {}) {
     setFromEuler() { return this; } setFromNormalAndCoplanarPoint() { return this; }
     subVectors() { return this; } normalize() { return this; } multiplyScalar() { return this; }
     negate() { return this; } add() { return this; } addScaledVector() { return this; }
-    lerp() { return this; } setScalar() { return this; } length() { return 9; }
+    lerp() { return this; } setScalar() { return this; } length() { return 9; } copy() { return this; }
   }
   class Renderer {
     constructor() {
