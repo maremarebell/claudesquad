@@ -1,0 +1,33 @@
+# Render. Two pieces, both free:
+#
+# - claudesquad-api (this Blueprint): the check-in server in server/.
+# - claudesquad (static site, made in the dashboard, not in this file): the
+#   11ty site at https://claudesquad.onrender.com. Build `npm ci && npm run
+#   build`, publish `_site`, headers: /sw.js Cache-Control no-cache and
+#   /manifest.webmanifest Content-Type application/manifest+json.
+#
+# The database is the Neon project "claudesquad" (Render's one free database
+# slot is Meridian's). DATABASE_URL is set on claudesquad-api by hand (sync:
+# false keeps it out of this public file); the server keeps its tables in
+# schema DB_SCHEMA and creates them on start.
+
+services:
+  - type: web
+    name: claudesquad-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: node index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SCHEMA
+        value: claudesquad
+      - key: SITE_URL
+        value: https://claudesquad.onrender.com
+      # Sign in with GitHub turns on when GITHUB_CLIENT_ID and GITHUB_SECRET
+      # are set on this service (from a GitHub OAuth app whose callback is
+      # https://claudesquad-api.onrender.com/api/auth/github/callback).

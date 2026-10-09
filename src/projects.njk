@@ -1,0 +1,52 @@
+---
+layout: base.njk
+title: Projects
+permalink: /projects/
+---
+{% set newProject = "---\nname: \nrepo: https://github.com/you/your-project\nlead: \nhelp:\n  - \n---\n\nWhat it is, in a sentence or two.\n" %}
+
+<div class="content">
+  <h1>Projects</h1>
+
+  <div>
+  <section class="working" id="working">
+    <h2 class="working__title">What are you working on?</h2>
+    <form class="working__form" hidden>
+      <textarea name="body" maxlength="280" rows="2" required placeholder="A line about it"></textarea>
+      <input name="link" type="url" inputmode="url" placeholder="Link (optional)">
+      <button class="here__btn" type="submit">Post</button>
+    </form>
+    <p class="working__login"><a class="here__btn" href="/here/">Log in to post</a></p>
+    <p class="working__status" role="status"></p>
+    <ol class="working__feed"></ol>
+  </section>
+  <script type="module" src="/js/working.js"></script>
+
+  <h2 class="projects__title">Projects</h2>
+  <div class="projects">
+    {% for project in collections.project | sort(false, false, "data.name") %}
+      <article class="project">
+        <h2 class="project__name"><a href="{{ project.data.repo }}" target="_blank" rel="noopener">{{ project.data.name }}</a></h2>
+        {% if project.data.lead %}<p class="project__lead">{{ project.data.lead }}</p>{% endif %}
+        <div class="project__about">{{ project.content | safe }}</div>
+        {% if project.data.help and project.data.help[0] %}
+          <ul class="project__help">
+            {% for item in project.data.help %}{% if item %}<li>{{ item }}</li>{% endif %}{% endfor %}
+          </ul>
+        {% endif %}
+        <p class="project__links">
+          <a href="{{ project.data.repo }}/issues?q=is%3Aopen+label%3A%22good+first+issue%22" target="_blank" rel="noopener">Good first issues</a>
+          <a href="{{ project.data.repo }}/issues" target="_blank" rel="noopener">All issues</a>
+          <a href="{{ project.data.repo }}" target="_blank" rel="noopener">Code</a>
+        </p>
+      </article>
+    {% else %}
+      <p class="projects__empty">No projects yet. Add the one you're working on.</p>
+    {% endfor %}
+  </div>
+
+  <p class="projects__add">
+    <a class="here__btn" href="{{ site.repo }}/new/{{ site.branch }}/src/projects?filename=your-project.md&value={{ newProject | urlencode }}" target="_blank" rel="noopener">Add a project</a>
+  </p>
+  </div>
+</div>

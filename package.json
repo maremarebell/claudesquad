@@ -5,7 +5,8 @@
   "scripts": {
     "build": "eleventy",
     "dev": "eleventy --serve",
-    "start": "eleventy --serve"
+    "start": "eleventy --serve",
+    "test": "node --test test/*.test.*"
   },
   "keywords": [
     "eleventy",

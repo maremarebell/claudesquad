@@ -2,29 +2,46 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Squad</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% set pageName = name or title %}{% if pageName and pageName != 'Home' %}{{ pageName }} · {% endif %}Claude Squad</title>
   <link rel="icon" href="/images/favicon/favicon.ico" sizes="any">
+  <link rel="icon" href="/images/pig.svg" type="image/svg+xml">
   <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon/favicon-16x16.png">
   <link rel="apple-touch-icon" href="/images/favicon/apple-touch-icon.png">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="squad-api" content="{{ site.apiUrl }}">
+  {% if page.url == "/admin/" %}<meta name="robots" content="noindex">{% endif %}
+  <meta name="theme-color" content="#000000">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Squad">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body class="page">
   <header class="header">
     <div class="header__container">
       <a href="/" class="header__brand">
-        <img src="/images/logomark.jpg" alt="Claude Squad" class="header__logo-img">
+        <img src="/images/pig.svg" width="68" height="36" alt="Claude Squad" class="header__logo-img">
         <span class="header__logo-text">Claude Squad</span>
       </a>
       <nav class="nav">
         <ul class="nav__list">
           <li class="nav__item">
-            <a href="/calendar" class="nav__link">Calendar</a>
+            <a href="/here/" class="nav__link" id="nav-login"{% if page.url == "/here/" %} aria-current="page"{% endif %}>Log in</a>
           </li>
           <li class="nav__item">
-            <a href="/members" class="nav__link">Members</a>
+            <a href="/calendar/" class="nav__link"{% if page.url == "/calendar/" %} aria-current="page"{% endif %}>Calendar</a>
+          </li>
+          <li class="nav__item">
+            <a href="/projects/" class="nav__link"{% if page.url == "/projects/" %} aria-current="page"{% endif %}>Projects</a>
+          </li>
+          <li class="nav__item">
+            <a href="/members/" class="nav__link"{% if "/members/" in page.url %} aria-current="page"{% endif %}>Members</a>
           </li>
         </ul>
       </nav>
@@ -44,9 +61,35 @@
 
   <footer class="footer">
     <div class="footer__container">
-      <p class="footer__text">Make No Mistakes.</p>
-      <p class="footer__text footer__text--muted">&copy; 2026 Claude Squad</p>
+      <p class="footer__mark" aria-hidden="true">Make No Mistakes.</p>
+      <p class="footer__meta"><span>&copy; 2026 Claude Squad</span><span>NYC</span></p>
     </div>
   </footer>
+  <script>
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+    console.log('%cMAKE NO MISTAKES.', 'font: 16px "Press Start 2P", monospace; color: #d9835f; background: #000; padding: 8px');
+    console.log('Reading the source? Check in at a meetup and PR yourself onto the site: {{ site.repo }}');
+    // the footer slab tilts toward the pointer, or the way a phone is held
+    (function () {
+      var mark = document.querySelector('.footer__mark');
+      if (!mark || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var tilt = function (x, y) {
+        mark.style.setProperty('--tilt-y', (x * 9).toFixed(1) + 'deg');
+        mark.style.setProperty('--tilt-x', (14 - y * 14).toFixed(1) + 'deg');
+      };
+      addEventListener('pointermove', function (e) {
+        if (e.pointerType === 'mouse') tilt(e.clientX / innerWidth * 2 - 1, e.clientY / innerHeight * 2 - 1);
+      }, { passive: true });
+      addEventListener('deviceorientation', function (e) {
+        if (e.gamma != null) tilt(Math.max(-1, Math.min(1, e.gamma / 30)), Math.max(-1, Math.min(1, (e.beta - 45) / 30)));
+      });
+    })();
+    // a check-in session on this phone means the nav can say Check in
+    try {
+      if (localStorage.getItem('squad-token')) {
+        document.getElementById('nav-login').textContent = 'Check in';
+      }
+    } catch (e) {}
+  </script>
 </body>
 </html>
