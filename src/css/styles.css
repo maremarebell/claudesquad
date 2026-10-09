@@ -784,6 +784,114 @@ h2 {
   to { transform: translateY(-4px); }
 }
 
+/* the bump collision: full-screen, above everything, gone in under 2s */
+.collide {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-chrome) + 10);
+  pointer-events: none;
+  perspective: 700px;
+  overflow: hidden;
+}
+
+.collide__face {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 104px;
+  height: 104px;
+  margin: -52px 0 0 -52px;
+  border-radius: 50%;
+  border: 4px solid var(--ink);
+  box-shadow: 0 0 0 4px var(--accent), 0 18px 40px rgba(0, 0, 0, 0.6);
+  background: var(--card-bg);
+  object-fit: cover;
+  transform-style: preserve-3d;
+}
+
+.collide__face.is-pig {
+  object-fit: contain;
+  padding: 14px;
+}
+
+.collide__ring {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 80px;
+  height: 80px;
+  border: 10px solid var(--accent);
+  border-radius: 50%;
+}
+
+.collide__flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 44%, var(--ink), rgba(217, 131, 95, 0.5) 30%, transparent 65%);
+  opacity: 0;
+}
+
+.collide__shard {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+}
+
+.collide__shard--ink {
+  background: var(--ink);
+}
+
+.collide__label {
+  position: absolute;
+  left: 50%;
+  top: calc(44% + 84px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  opacity: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.collide__word {
+  font-family: var(--pixel);
+  font-size: clamp(28px, 9vw, 44px);
+  color: var(--accent);
+  text-shadow: 3px 3px 0 var(--accent-dark), 6px 6px 0 #4a2617;
+  text-transform: uppercase;
+}
+
+.collide__names {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/* reduced motion: the two faces side by side and the words, no flight */
+.collide--still {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.collide--still .collide__face--left {
+  transform: translateX(-40px) rotate(-10deg);
+}
+
+.collide--still .collide__face--right {
+  transform: translateX(40px) rotate(10deg);
+}
+
+.collide--still .collide__label {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
 /* the 3D pig: replaces the flat one where WebGL runs; drag to turn it */
 .here__pig3d {
   display: block;

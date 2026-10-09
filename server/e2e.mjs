@@ -74,7 +74,8 @@ await check('a bump alone waits; someone far away does not match', async () => {
 
 await check('two people shaking together nearby both get checked in', async () => {
   const r = await call('/api/bump', { method: 'POST', token: ben.token, body: nearby });
-  assert.deepEqual(r.body, { matched: true, with: ['Ana'] });
+  assert.deepEqual(r.body.with, ['Ana']);
+  assert.deepEqual(r.body.members, [{ name: 'Ana', avatar_url: 'https://github.com/ana-gh.png?size=96' }]);
   const board = await call(`/api/board?dates=${today}`, { token: cy.token });
   assert.deepEqual(board.body.map(row => row.members.name).sort(), ['Ana', 'Ben']);
   assert.ok(board.body.every(row => row.event_date === today));

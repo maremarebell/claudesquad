@@ -239,7 +239,7 @@ const routes = {
       await client.query("delete from bumps where at < now() - interval '1 hour'");
       await client.query('insert into bumps (member_id, lat, lng) values ($1, $2, $3)', [me.id, lat, lng]);
       const { rows } = await client.query(
-        `select distinct b.member_id, m.name from bumps b join members m on m.id = b.member_id
+        `select distinct b.member_id, m.name, m.avatar_url from bumps b join members m on m.id = b.member_id
          where b.member_id <> $1 and b.at > now() - interval '20 seconds'
            and metres_between($2, $3, b.lat, b.lng) < 250`, [me.id, lat, lng]);
       if (rows.length) {
@@ -249,7 +249,10 @@ const routes = {
            on conflict do nothing`, [[me.id, ...rows.map(r => r.member_id)]]);
       }
       await client.query('commit');
-      return rows.length ? { matched: true, with: rows.map(r => r.name).sort() } : { matched: false };
+      // `members` carries faces for the collision on the phone; `with` stays for old clients
+      return rows.length
+        ? { matched: true, with: rows.map(r => r.name).sort(), members: rows.map(r => ({ name: r.name, avatar_url: r.avatar_url })) }
+        : { matched: false };
     } catch (e) {
       await client.query('rollback');
       throw e;

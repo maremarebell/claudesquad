@@ -4,6 +4,7 @@
 // the third sends a bump, and two bumps close in time and place check both in.
 import { SHAKES, POINTS, nyToday, tally, shakeCounter, leaderboard } from './checkin.js';
 import { PIG } from './pig.js';
+import { collide } from './collide.js';
 import { api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
 
 const root = document.getElementById('here');
@@ -219,7 +220,7 @@ async function bump() {
       const at = await locate();
       const data = await api('/api/bump', { lat: at.lat, lng: at.lng });
       if (user !== me) return;
-      if (data.matched) return landed(data.with, wasIn);
+      if (data.matched) return landed(data.with, wasIn, data.members);
       if (!i) say('Now get someone next to you to shake too…');
     }
     rearm('Nobody shook back. Shake together, at the same time.');
@@ -230,9 +231,17 @@ async function bump() {
 
 // Matched. Celebrate, and on someone's first meetup put the GitHub link
 // right there, because that's the moment they're in the squad.
-async function landed(names, wasIn) {
+async function landed(names, wasIn, members) {
   const me = user;
-  buzz([60, 40, 120]);
+  // the collision plays while the board refreshes underneath it
+  collide({
+    me: { name: me.name, avatar_url: me.avatar_url },
+    them: members?.length ? members : (names || []).map(name => ({ name, avatar_url: '/images/pig.svg' })),
+    reduced: REDUCED.matches,
+    shake: root,
+  });
+  // two heavy hits, timed to land with the faces
+  setTimeout(() => buzz([90, 70, 160]), 420);
   root.classList.remove('here--waiting', 'here--armed');
   root.classList.add('here--checked-in');
   if (!wasIn) $('#here-checkin-btn').hidden = true;
