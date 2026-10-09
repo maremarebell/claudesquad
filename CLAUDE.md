@@ -33,10 +33,10 @@ npm run build   # outputs to _site/
 
 ### `src/_data/` (11ty global data)
 
-- `site.json` — `{ whatsappLink, repo, apiUrl }`. `apiUrl` is the check-in server. Currently always set to a real invite link; there's no "link missing" fallback anywhere anymore (it was removed on purpose — see git log "Remove the no-link fallback for the WhatsApp button"). If this ever needs to go back to being optional, that pattern would need re-adding in `base.njk`.
+- `site.json` — `{ whatsappLink, repo, apiUrl, branch }`. `apiUrl` is the check-in server. `branch` is the branch Render deploys; every "add/edit on GitHub" link (profile, project, Partiful admin, CONTRIBUTING) targets it, so submissions land where the live site builds from. Change it to `main` together with Render's branch once PR #1 merges. Currently always set to a real invite link; there's no "link missing" fallback anywhere anymore (it was removed on purpose — see git log "Remove the no-link fallback for the WhatsApp button"). If this ever needs to go back to being optional, that pattern would need re-adding in `base.njk`.
 - `events.json` — the single source of truth for all meetups. Each entry: `date` (`YYYY-MM-DD`), `title`, `emoji` (optional), `color` (optional, defaults to `var(--accent)`), `partiful` (URL or `null`). This is the file to edit when meetups are added/changed — nothing else needs touching.
 - `calendarMonths.js` — computes the calendar grid *from* `events.json`. Key behavior: it only renders 3-month blocks for quarters that actually contain an event (sorted chronologically), **not** a rolling window based on today's date. The next quarter only appears once an event is added to it — this was an explicit user request, don't "fix" it back to date-based rolling. Falls back to today's quarter if `events.json` is ever empty. Also flags `isPast` per month (fully-elapsed months) for the gray-out/mobile-hide behavior in CSS.
-- `nextEvent.js` — soonest event on/after today, used by the homepage hero. Returns `null` if nothing upcoming (the meetup block just doesn't render).
+- `nextEvent.js` — soonest event on/after the build date, used by the homepage hero; the page re-picks the next meetup in the browser (the build can be days old), and the calendar re-marks today and past months the same way. Returns `null` if nothing upcoming (the meetup block just doesn't render).
 
 ## Design system
 

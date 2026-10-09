@@ -129,7 +129,7 @@ async function renderBoard() {
     const login = user.login;
     // JSON strings are valid YAML, so a name with a colon can't break the front matter
     const template = `---\nname: ${JSON.stringify(user.name || login)}\nrole:\nphoto:\n---\n\n`;
-    const href = `${cfg.repo}/new/main/src/profiles?filename=${encodeURIComponent(login)}.md&value=${encodeURIComponent(template)}`;
+    const href = `${cfg.repo}/new/${cfg.branch}/src/profiles?filename=${encodeURIComponent(login)}.md&value=${encodeURIComponent(template)}`;
     $('#here-profile-link').href = href;
     $('#here-welcome-link').href = href;
   }

@@ -1,5 +1,6 @@
 {
   "whatsappLink": "https://chat.whatsapp.com/FzIgsZtcNeLFUvM1IehCBu?mode=gi_t",
   "repo": "https://github.com/maremarebell/claudesquad",
-  "apiUrl": "https://claudesquad-api.onrender.com"
+  "apiUrl": "https://claudesquad-api.onrender.com",
+  "branch": "claudesquad-3d-attendance"
 }

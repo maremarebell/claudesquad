@@ -42,7 +42,7 @@ eleventyExcludeFromCollections: true
       }
       var json = JSON.stringify(events, null, 2) + '\n';
       var open = function () {
-        window.open('{{ site.repo }}/edit/main/src/_data/events.json', '_blank', 'noopener');
+        window.open('{{ site.repo }}/edit/{{ site.branch }}/src/_data/events.json', '_blank', 'noopener');
       };
       navigator.clipboard.writeText(json).then(function () {
         status.textContent = 'Copied. On GitHub: select all, paste, Commit changes.';
