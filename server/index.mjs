@@ -33,8 +33,10 @@ const github = Boolean(GITHUB_CLIENT_ID && GITHUB_SECRET);
 // Everything lives in its own schema, so the database can be shared with
 // another project without any table of ours touching theirs.
 const SCHEMA = process.env.DB_SCHEMA || 'claudesquad';
+// Neon's pooled host ("-pooler") rejects the search_path startup option, so
+// connect to the direct host instead; the server only opens a handful.
 const connection = {
-  connectionString: DATABASE_URL,
+  connectionString: DATABASE_URL?.replace('-pooler.', '.'),
   ssl: /localhost|127\.0\.0\.1/.test(DATABASE_URL || '') || !/\./.test(new URL(DATABASE_URL || 'postgres://x').hostname)
     ? false : { rejectUnauthorized: false },
 };
