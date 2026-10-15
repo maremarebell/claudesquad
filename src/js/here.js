@@ -392,7 +392,7 @@ api('/api/config').then(({ github }) => {
   show('#here-github', github);
   if (!store.get()) return render(null);
   return api('/api/me').then(({ member }) => render(member));
-}).catch(() => say("Check-in isn't open yet."));
+}).catch(e => say(e.message));
 
 // Install as an app. Chrome and Android hand over a prompt to show on a tap;
 // iPhone has none, so it gets the two taps written out. Hidden once installed.
