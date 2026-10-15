@@ -1,0 +1,73 @@
+---
+layout: base.njk
+title: Log in
+permalink: /here/
+---
+
+<div class="here" id="here">
+  <div class="here__bar" aria-hidden="true"><span>[ Claude Squad ]</span><span>NYC</span></div>
+  <h1 class="page-title" id="here-title">Log in</h1>
+  <p class="here__status" id="here-status" role="status">Loading…</p>
+
+  <div id="here-signin" hidden>
+    <a class="here__btn" id="here-github" href="{{ site.apiUrl }}/api/auth/github" hidden>Sign in with GitHub</a>
+    <form class="here__join" id="here-join">
+      <label>Your name <input name="name" autocomplete="name" maxlength="40" required></label>
+      <label>GitHub username <input name="github" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="39" required></label>
+      <button class="here__btn" type="submit">Join the squad</button>
+    </form>
+  </div>
+
+  <div id="here-app" hidden>
+    <p class="here__who">Signed in as <b id="here-name"></b> · <button class="here__link" id="here-signout" type="button">Sign out</button></p>
+
+    <div id="here-checkin" hidden>
+      <div class="here__stage" aria-hidden="true"><div class="here__pig" id="here-pig"></div></div>
+      <div class="here__pips" aria-hidden="true"><i></i><i></i><i></i></div>
+      <button class="here__btn here__btn--checkin" id="here-checkin-btn" type="button">Friendship&shy;mog</button>
+    </div>
+
+    <div class="here__welcome" id="here-welcome" hidden>
+      <p class="here__welcome-title">First Claude Squad. You're in.</p>
+      <p><a class="here__btn" id="here-welcome-link" target="_blank" rel="noopener">Add yourself on GitHub</a></p>
+    </div>
+
+    <div class="here__score">
+      <span class="here__points" id="here-points">0</span>
+      <span class="here__label" id="here-tally">0 meetups · 0 PRs</span>
+    </div>
+
+    <section id="here-present" hidden>
+      <h2>Here today</h2>
+      <div class="here__faces" id="here-faces"></div>
+    </section>
+
+    <section>
+      <h2>Leaderboard</h2>
+      <ol class="here__board" id="here-board"></ol>
+    </section>
+
+    <section>
+      <h2>Edit the site</h2>
+      <p id="here-locked">Check in at a meetup to unlock this.</p>
+      <div id="here-unlocked" hidden>
+        <p><a class="here__btn" id="here-profile-link" target="_blank" rel="noopener">Add your profile</a></p>
+        <p><a href="/projects/">Projects</a> · <a href="{{ site.repo }}" target="_blank" rel="noopener">The repo</a> · <a href="{{ site.repo }}/blob/{{ site.branch }}/CONTRIBUTING.md" target="_blank" rel="noopener">How to contribute</a></p>
+      </div>
+    </section>
+  </div>
+
+  <div class="here__install" id="here-install" hidden>
+    <p class="here__install-title">Put Squad on your home screen</p>
+    <button class="here__btn" id="here-install-btn" type="button" hidden>Install the app</button>
+    <p id="here-install-ios" hidden>In Safari, tap Share, then Add to Home Screen.</p>
+  </div>
+
+  <label class="here__haptic" aria-hidden="true"><input type="checkbox" switch id="haptic" tabindex="-1"></label>
+</div>
+
+<script type="application/json" id="here-config">{{ { repo: site.repo, branch: site.branch, prRepos: prRepos, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.180.0/build/three.module.min.js" } }
+</script>
+<script type="module" src="/js/here.js"></script>

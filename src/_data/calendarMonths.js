@@ -11,8 +11,8 @@ function pad(n) {
 
 function eventTooltip(event) {
   return event.partiful
-    ? `${event.title} — RSVP on Partiful`
-    : `${event.title} — Partiful TBA, ask in the WhatsApp group`;
+    ? `${event.title}: RSVP on Partiful`
+    : `${event.title}: Partiful TBA, ask in the WhatsApp group`;
 }
 
 function quarterKey(year, monthIndex) {
@@ -20,7 +20,7 @@ function quarterKey(year, monthIndex) {
   return `${year}-${q}`;
 }
 
-// Shows one 3-month block per quarter that actually has an event in it —
+// Shows one 3-month block per quarter that actually has an event in it:
 // it does NOT auto-advance with today's date. The next quarter only
 // appears once an event is added to it. Falls back to the current
 // quarter if events.json has nothing in it yet.

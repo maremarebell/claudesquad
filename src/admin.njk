@@ -1,0 +1,60 @@
+---
+layout: base.njk
+title: Meetup links
+permalink: /admin/
+eleventyExcludeFromCollections: true
+---
+{# Not in the nav. GitHub decides who can actually change anything: only people
+   with write access to the repo can commit the edit; anyone else gets a PR. #}
+<div class="content admin">
+  <h1>Meetup links</h1>
+  <div>
+    <p>Paste a Partiful link next to each meetup, then Save. It copies the updated meetups file and opens it on GitHub: select everything there, paste, and commit.</p>
+    <form class="admin__form" id="admin">
+      {% for e in events | sort(false, false, "date") %}
+        <label class="admin__row">
+          <span class="admin__when">{{ e.date }} · {{ e.title }}</span>
+          <input type="url" inputmode="url" name="{{ e.date }}" value="{{ e.partiful or '' }}" placeholder="https://partiful.com/e/...">
+        </label>
+      {% endfor %}
+      <button class="here__btn" type="submit">Save</button>
+      <p class="admin__status" role="status"></p>
+    </form>
+  </div>
+</div>
+<script type="application/json" id="admin-events">{{ events | dump | replace("<", "\\u003c") | safe }}</script>
+<script>
+  (function () {
+    var form = document.getElementById('admin');
+    var events = JSON.parse(document.getElementById('admin-events').textContent);
+    var status = form.querySelector('.admin__status');
+    form.onsubmit = function (e) {
+      e.preventDefault();
+      var bad = [];
+      events.forEach(function (ev) {
+        var v = form.elements[ev.date].value.trim();
+        if (v && !/^https:\/\/(www\.)?partiful\.com\//.test(v)) bad.push(ev.date);
+        ev.partiful = v || null;
+      });
+      if (bad.length) {
+        status.textContent = 'Those need to be partiful.com links: ' + bad.join(', ');
+        return;
+      }
+      var json = JSON.stringify(events, null, 2) + '\n';
+      var open = function () {
+        window.open('{{ site.repo }}/edit/{{ site.branch }}/src/_data/events.json', '_blank', 'noopener');
+      };
+      navigator.clipboard.writeText(json).then(function () {
+        status.textContent = 'Copied. On GitHub: select all, paste, Commit changes.';
+        open();
+      }, function () {
+        status.textContent = "Couldn't copy here, so here it is to copy by hand:";
+        var pre = document.createElement('pre');
+        pre.className = 'admin__json';
+        pre.textContent = json;
+        status.after(pre);
+        open();
+      });
+    };
+  })();
+</script>

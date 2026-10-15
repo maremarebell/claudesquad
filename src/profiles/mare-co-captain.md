@@ -4,4 +4,4 @@ role: Co-Captain
 photo:
 ---
 
-Placeholder bio — fill this in whenever.
+Placeholder bio. Fill this in whenever.

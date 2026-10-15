@@ -11,7 +11,7 @@ title: 2026 Calendar
 
   <div class="calendar__grid">
     {% for month in calendarMonths %}
-      <div class="calendar__month-block{% if month.isPast %} calendar__month-block--past{% endif %}">
+      <div class="calendar__month-block{% if month.isPast %} calendar__month-block--past{% endif %}" data-month="{{ month.weeks[1][0].date | truncate(7, true, '') }}">
         <div class="calendar__month-header">
           <span class="calendar__month-name">{{ month.name }}</span>
           <span class="calendar__month-year">{{ month.year }}</span>
@@ -39,6 +39,7 @@ title: 2026 Calendar
                       {% set event = day.events[0] %}
                       <a href="{{ event.partiful or '#' }}"
                          {% if event.partiful %}target="_blank" rel="noopener"{% endif %}
+                         data-date="{{ day.date }}"
                          class="calendar__day calendar__day--event{% if day.isToday %} calendar__day--today{% endif %}{% if not event.partiful %} calendar__day--no-link{% endif %}"
                          data-event-name="{{ event.tooltip }}"
                          style="background: {{ event.color or 'var(--accent)' }};">
@@ -46,7 +47,7 @@ title: 2026 Calendar
                         {% if event.emoji %}<span class="calendar__day-emoji">{{ event.emoji }}</span>{% endif %}
                       </a>
                     {% else %}
-                      <div class="calendar__day{% if day.isToday %} calendar__day--today{% endif %}">
+                      <div class="calendar__day{% if day.isToday %} calendar__day--today{% endif %}" data-date="{{ day.date }}">
                         <span class="calendar__day-number">{{ day.day }}</span>
                       </div>
                     {% endif %}
@@ -62,6 +63,18 @@ title: 2026 Calendar
 </div>
 
 <script>
+  // The grid is built when the site is, which can be days ago: mark today and
+  // grey out finished months by New York's date in the browser instead.
+  (function () {
+    var today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    document.querySelectorAll('.calendar__day[data-date]').forEach(function (el) {
+      el.classList.toggle('calendar__day--today', el.dataset.date === today);
+    });
+    document.querySelectorAll('.calendar__month-block[data-month]').forEach(function (el) {
+      el.classList.toggle('calendar__month-block--past', el.dataset.month < today.slice(0, 7));
+    });
+  })();
+
   document.addEventListener('DOMContentLoaded', function() {
     // Days without a Partiful link yet: tap/click toggles a tooltip instead of navigating.
     document.querySelectorAll('.calendar__day--no-link').forEach(el => {

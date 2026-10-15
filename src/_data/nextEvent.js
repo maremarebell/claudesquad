@@ -6,7 +6,8 @@ function formatDate(dateStr) {
   return dt.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
-// The soonest event on or after today, for the homepage banner.
+// The soonest event on or after today, for the homepage hero. Picked at build
+// time, so the site needs a rebuild after each meetup to move on to the next.
 module.exports = function() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
