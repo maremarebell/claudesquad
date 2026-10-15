@@ -17,17 +17,27 @@ export const token = {
 
 export class SignedOut extends Error {}
 
+// The free server sleeps when idle and takes up to a minute to wake, during
+// which requests fail or come back 502/503. Reads keep trying for 90 seconds;
+// writes (join, bump) don't, so nothing is sent twice.
+const WAKE_MS = 90000;
+
 export async function api(path, body) {
   const t = token.get();
+  const until = Date.now() + (body ? 0 : WAKE_MS);
   let res;
-  try {
-    res = await fetch(API + path, {
-      method: body ? 'POST' : 'GET',
-      headers: { 'Content-Type': 'application/json', ...(t && { Authorization: `Bearer ${t}` }) },
-      body: body && JSON.stringify(body),
-    });
-  } catch {
-    throw new Error("Can't reach the check-in server. Check your signal and try again.");
+  for (;;) {
+    try {
+      res = await fetch(API + path, {
+        method: body ? 'POST' : 'GET',
+        headers: { 'Content-Type': 'application/json', ...(t && { Authorization: `Bearer ${t}` }) },
+        body: body && JSON.stringify(body),
+      });
+      if (![502, 503, 504].includes(res.status) || Date.now() > until) break;
+    } catch {
+      if (Date.now() > until) throw new Error("Can't reach the check-in server. Check your signal and try again.");
+    }
+    await new Promise(r => setTimeout(r, 3000));
   }
   const out = await res.json().catch(() => ({}));
   if (res.status === 401) {
