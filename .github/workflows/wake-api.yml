@@ -1,0 +1,19 @@
+# The free check-in server sleeps after 15 idle minutes and takes up to a
+# minute to wake. On meetup days (New York date in events.json) this pings it
+# every 10 minutes so it stays up all day. Other days it sleeps: Render's 750
+# free hours a month are shared across the workspace. GitHub only runs
+# scheduled workflows from the default branch.
+name: Keep the check-in server awake on meetup days
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          today=$(TZ=America/New_York date +%F)
+          grep -q "\"date\": \"$today\"" src/_data/events.json || { echo "$today is not a meetup day"; exit 0; }
+          curl -fsS --retry 8 --retry-delay 10 --retry-all-errors https://claudesquad-api-z7dp.onrender.com/api/health
