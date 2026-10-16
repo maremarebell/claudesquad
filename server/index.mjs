@@ -27,7 +27,8 @@ const {
   GITHUB_CLIENT_ID, GITHUB_SECRET,
 } = process.env;
 const API_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-const ORIGINS = new Set([SITE_URL, 'http://localhost:8080', 'http://127.0.0.1:8080']);
+// SITE_URL may carry a path or trailing slash; the live site is always allowed.
+const ORIGINS = new Set([new URL(SITE_URL).origin, 'https://claudesquad.onrender.com', 'http://localhost:8080', 'http://127.0.0.1:8080']);
 const github = Boolean(GITHUB_CLIENT_ID && GITHUB_SECRET);
 
 // Everything lives in its own schema, so the database can be shared with
