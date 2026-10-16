@@ -55,7 +55,7 @@ npm run build   # outputs to _site/
 - Profiles live under `/members/slug/` and are listed on `/members/`.
 - `CONTRIBUTING.md` has the full user-facing instructions for adding a meetup, a profile, or a gallery photo via PR — keep it in sync if the data shapes above change.
 - Git: remote is github.com/maremarebell/claudesquad.
-- Deploy: Render, all free. Static site `claudesquad` (https://claudesquad.onrender.com, made in the dashboard, builds `claudesquad-3d-attendance`; switch to `main` once the PR merges), plus the Blueprint in `render.yaml`: `claudesquad-api` (server/). Its database is Neon project `claudesquad` (`blue-heart-05754755`, us-west-2), connection string in the service's `DATABASE_URL` (set by hand in Render, never in the repo); the server creates its tables in schema `claudesquad` on start. Pushes auto-deploy the static site (seen on 0693e6a). The free API sleeps when idle; `.github/workflows/wake-api.yml` pings it every 10 minutes on `events.json` dates (New York time), and only runs once it is on `main`.
+- Deploy: Render, all free. Static site `claudesquad` (https://claudesquad.onrender.com, made in the dashboard, builds `main`), plus the Blueprint in `render.yaml`: `claudesquad-api` (server/). Its database is Neon project `claudesquad` (`blue-heart-05754755`, us-west-2), connection string in the service's `DATABASE_URL` (set by hand in Render, never in the repo); the server creates its tables in schema `claudesquad` on start. Pushes auto-deploy the static site (seen on 0693e6a). The free API sleeps when idle; `.github/workflows/wake-api.yml` pings it every 10 minutes on `events.json` dates (New York time).
 
 ## TODO
 

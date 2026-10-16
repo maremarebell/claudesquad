@@ -16,4 +16,4 @@ jobs:
       - run: |
           today=$(TZ=America/New_York date +%F)
           grep -q "\"date\": \"$today\"" src/_data/events.json || { echo "$today is not a meetup day"; exit 0; }
-          curl -fsS --retry 8 --retry-delay 10 --retry-all-errors https://claudesquad-api.onrender.com/api/health
+          curl -fsS --retry 8 --retry-delay 10 --retry-all-errors https://claudesquad-api-z7dp.onrender.com/api/health
