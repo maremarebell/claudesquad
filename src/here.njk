@@ -16,6 +16,7 @@ permalink: /here/
       <label>GitHub username <input name="github" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="39" required></label>
       <button class="here__btn" type="submit">Join the squad</button>
     </form>
+    <p class="here__links"><a href="{{ site.repo }}" target="_blank" rel="noopener">GitHub repo</a> · <a href="{{ site.repo }}/blob/{{ site.branch }}/CONTRIBUTING.md" target="_blank" rel="noopener">How to contribute</a></p>
   </div>
 
   <div id="here-app" hidden>
@@ -49,11 +50,8 @@ permalink: /here/
 
     <section>
       <h2>Edit the site</h2>
-      <p id="here-locked">Check in at a meetup to unlock this.</p>
-      <div id="here-unlocked" hidden>
-        <p><a class="here__btn" id="here-profile-link" target="_blank" rel="noopener">Add your profile</a></p>
-        <p><a href="/projects/">Projects</a> · <a href="{{ site.repo }}" target="_blank" rel="noopener">The repo</a> · <a href="{{ site.repo }}/blob/{{ site.branch }}/CONTRIBUTING.md" target="_blank" rel="noopener">How to contribute</a></p>
-      </div>
+      <p id="here-profile" hidden><a class="here__btn" id="here-profile-link" target="_blank" rel="noopener">Add your profile</a></p>
+      <p class="here__links"><a href="/projects/">Projects</a> · <a href="{{ site.repo }}" target="_blank" rel="noopener">GitHub repo</a> · <a href="{{ site.repo }}/blob/{{ site.branch }}/CONTRIBUTING.md" target="_blank" rel="noopener">How to contribute</a></p>
     </section>
   </div>
 

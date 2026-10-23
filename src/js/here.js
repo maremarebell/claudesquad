@@ -124,8 +124,8 @@ async function renderBoard() {
     return li;
   }));
 
-  show('#here-locked', mine === 0);
-  show('#here-unlocked', mine > 0);
+  // the GitHub links are always there; the profile button waits for a first check-in
+  show('#here-profile', mine > 0);
   if (mine > 0) {
     const login = user.login;
     // JSON strings are valid YAML, so a name with a colon can't break the front matter

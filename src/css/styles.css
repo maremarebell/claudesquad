@@ -1287,8 +1287,8 @@ h2 {
   pointer-events: none;
 }
 
-#here-unlocked p + p {
-  margin-top: var(--space-xs);
+.here__links {
+  margin-top: var(--space-sm);
   font-family: var(--mono);
   font-size: var(--text-xs);
   text-transform: uppercase;

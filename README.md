@@ -17,7 +17,7 @@ Builds to `_site/`. See `CONTRIBUTING.md` for how to add a profile or gallery ph
 
 The check-in server is `server/` (Node + Postgres), hosted on Render next to the site; `render.yaml` describes it. Matching happens on the server, so nobody can check in alone or from home. Locations are deleted after an hour and never sent to anyone.
 
-A GitHub username can only be joined once by typing it. Once a GitHub OAuth app is set up (callback `https://claudesquad-api.onrender.com/api/auth/github/callback`) and its `GITHUB_CLIENT_ID` and `GITHUB_SECRET` are added to the `claudesquad-api` service on Render, a "Sign in with GitHub" button appears, and that's how people get back in on a new phone.
+A GitHub username can only be joined once by typing it. Once a GitHub OAuth app is set up (callback `https://claudesquad-api-z7dp.onrender.com/api/auth/github/callback`, the API service's own URL) and its `GITHUB_CLIENT_ID` and `GITHUB_SECRET` are added to the `claudesquad-api` service on Render, a "Sign in with GitHub" button appears, and that's how people get back in on a new phone.
 
 ### Also on the server
 
@@ -27,7 +27,7 @@ A GitHub username can only be joined once by typing it. Once a GitHub OAuth app 
 
 ### Hosting
 
-Free: the static site at https://claudesquad.onrender.com and the server at https://claudesquad-api.onrender.com on Render, with the server's tables in their own `claudesquad` schema on a free Neon Postgres (project `claudesquad`), whose address is set by hand as `DATABASE_URL` on the Render service. Phones need the HTTPS site: shaking and location only work there. The free server sleeps when idle and takes up to a minute to wake, so the check-in page wakes it as it opens.
+Free: the static site at https://claudesquad.onrender.com and the server at https://claudesquad-api-z7dp.onrender.com on Render, with the server's tables in their own `claudesquad` schema on a free Neon Postgres (project `claudesquad`), whose address is set by hand as `DATABASE_URL` on the Render service. Phones need the HTTPS site: shaking and location only work there. The free server sleeps when idle and takes up to a minute to wake, so the check-in page wakes it as it opens.
 
 Render deploys the static site on every push to the branch it builds.
 
