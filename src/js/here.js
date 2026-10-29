@@ -2,7 +2,7 @@
 // once it's set up), then on a meetup day shake your phone at the same time
 // as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
-import { SHAKES, POINTS, nyToday, tally, shakeCounter, leaderboard } from './checkin.js';
+import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard } from './checkin.js';
 import { PIG } from './pig.js';
 import { collide } from './collide.js';
 import { API, api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
@@ -84,15 +84,23 @@ async function join(e) {
       name: form.name.value,
       github: form.github.value.trim().replace(/^@/, ''),
     });
-    store.set(token);
     buzz(30);
-    await render(member);
-    say(`Welcome, ${member.name}. ${$('#here-status').textContent}`);
+    signedIn(token, `Welcome, ${member.name}.`);
   } catch (err) {
     say(err.message);
   } finally {
     btn.disabled = false;
   }
+}
+
+// iPhone offers "Undo Typing" when you shake a page you typed into, which
+// would pop up over every bump. Typing only happens on the way in, so signing
+// in starts the page over: a fresh page has nothing to undo.
+const WELCOME = 'squad-welcome';
+function signedIn(token, welcome) {
+  store.set(token);
+  try { welcome ? sessionStorage.setItem(WELCOME, welcome) : sessionStorage.removeItem(WELCOME); } catch {}
+  location.replace(location.pathname);
 }
 
 // A code from another phone where you're signed in. Also the way into the
@@ -103,11 +111,9 @@ async function claim(e) {
   const btn = form.querySelector('button');
   btn.disabled = true;
   try {
-    const { token, member } = await api('/api/auth/claim', { code: form.code.value });
-    store.set(token);
-    form.reset();
+    const { token } = await api('/api/auth/claim', { code: form.code.value });
     buzz(30);
-    await render(member);
+    signedIn(token);
   } catch (err) {
     say(err.message);
   } finally {
@@ -139,10 +145,9 @@ async function collect() {
   if (!pending || user) return;
   if (Date.now() > pending.until) return stopCollecting();
   try {
-    const { token, member } = await call('/api/auth/claim', { code: pending.nonce });
+    const { token } = await call('/api/auth/claim', { code: pending.nonce });
     stopCollecting();
-    store.set(token);
-    await render(member);
+    signedIn(token);
   } catch {}
 }
 
@@ -346,6 +351,12 @@ function tapInstead(msg) {
   btn.disabled = false;
 }
 
+// What this phone has learned about how its owner shakes (see shakeCounter),
+// kept so the second meetup starts where the first left off.
+const SHAKE = 'squad-shake';
+const shakeProfile = (() => { try { return readShakeProfile(localStorage.getItem(SHAKE)); } catch { return readShakeProfile(null); } })();
+const saveShake = () => { try { localStorage.setItem(SHAKE, JSON.stringify(shakeProfile)); } catch {} };
+
 // Listen for three shakes, then bump.
 function listen() {
   const btn = $('#here-checkin-btn');
@@ -358,7 +369,9 @@ function listen() {
   btn.textContent = 'Shake!';
   btn.disabled = true;
   const pips = [...root.querySelectorAll('.here__pips i')];
-  const step = shakeCounter();
+  // nothing typed should be left in focus while the phone shakes
+  document.activeElement?.blur?.();
+  const step = shakeCounter({ profile: shakeProfile });
   let heard = false;
   const onMotion = e => {
     heard = true;
@@ -367,7 +380,10 @@ function listen() {
     buzz(25);
     rep(n);
     pips.forEach((p, i) => p.classList.toggle('on', i < n));
-    if (n >= SHAKES) bump();
+    if (n >= SHAKES) {
+      saveShake();
+      bump();
+    }
   };
   addEventListener('devicemotion', onMotion);
   // sensors blocked in site settings never send an event: hand the tap back
@@ -379,6 +395,8 @@ function listen() {
   disarm = () => {
     removeEventListener('devicemotion', onMotion);
     clearTimeout(silent);
+    // near misses and jitter are learned too, not only finished shakes
+    saveShake();
   };
 }
 
@@ -481,7 +499,11 @@ api('/api/config').then(({ github }) => {
     } catch {}
     return render(null);
   }
-  return api('/api/me').then(({ member }) => render(member));
+  return api('/api/me').then(({ member }) => render(member)).then(() => {
+    let welcome = null;
+    try { welcome = sessionStorage.getItem(WELCOME); sessionStorage.removeItem(WELCOME); } catch {}
+    if (welcome) say(`${welcome} ${$('#here-status').textContent}`);
+  });
 }).catch(e => say(e.message));
 
 // Install as an app. Chrome and Android hand over a prompt to show on a tap;
