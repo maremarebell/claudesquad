@@ -759,6 +759,19 @@ h2 {
   margin-top: var(--space-md);
 }
 
+/* sign in with a code from another phone: below the join, split by a rule */
+.here__code {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--rule);
+}
+
+.here__code-value {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  user-select: all;
+}
+
 .here__join label {
   display: flex;
   flex-direction: column;

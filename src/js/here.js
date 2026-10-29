@@ -5,7 +5,7 @@
 import { SHAKES, POINTS, nyToday, tally, shakeCounter, leaderboard } from './checkin.js';
 import { PIG } from './pig.js';
 import { collide } from './collide.js';
-import { api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
+import { API, api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
@@ -94,6 +94,83 @@ async function join(e) {
     btn.disabled = false;
   }
 }
+
+// A code from another phone where you're signed in. Also the way into the
+// home-screen app on iPhone, which doesn't share storage with Safari.
+async function claim(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    const { token, member } = await api('/api/auth/claim', { code: form.code.value });
+    store.set(token);
+    form.reset();
+    buzz(30);
+    await render(member);
+  } catch (err) {
+    say(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function showCode() {
+  try {
+    const { code } = await api('/api/auth/code', {});
+    $('#here-code-value').textContent = code;
+    show('#here-code');
+  } catch (e) {
+    say(e.message);
+  }
+}
+
+// Sign in with GitHub from the home-screen app. On iPhone, GitHub's page
+// opens in Safari or an in-app browser whose storage isn't the app's, so the
+// token in the redirect never reaches the app. Instead the app sends a random
+// nonce along and collects the session with it once GitHub is done. The nonce
+// is kept, because iOS can close the app while you're in Safari.
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const PENDING = 'squad-github-nonce';
+let pending = null;
+let polling = null;
+
+async function collect() {
+  if (!pending || user) return;
+  if (Date.now() > pending.until) return stopCollecting();
+  try {
+    const { token, member } = await call('/api/auth/claim', { code: pending.nonce });
+    stopCollecting();
+    store.set(token);
+    await render(member);
+  } catch {}
+}
+
+function stopCollecting() {
+  pending = null;
+  clearInterval(polling);
+  try { localStorage.removeItem(PENDING); } catch {}
+}
+
+function startCollecting(p) {
+  pending = p;
+  clearInterval(polling);
+  polling = setInterval(collect, 2000);
+}
+
+function githubFromApp(e) {
+  if (!standalone) return;
+  e.preventDefault();
+  const nonce = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const p = { nonce, until: Date.now() + 600000 };
+  try { localStorage.setItem(PENDING, JSON.stringify(p)); } catch {}
+  window.open(`${e.currentTarget.href}?app=${nonce}`, '_blank');
+  say('Finish signing in with GitHub, then come back here.');
+  startCollecting(p);
+}
+
+// coming back to the app checks straight away
+addEventListener('visibilitychange', () => { if (!document.hidden) collect(); });
 
 // Redraws points, today's faces and the leaderboard. Returns how many meetups
 // you have and whether you are already in today. Only meetup dates are read,
@@ -329,6 +406,7 @@ async function arm() {
 
 async function render(member) {
   user = member || null;
+  if (user) stopCollecting();
   // lets the homepage leaderboard mark your row
   try { user ? localStorage.setItem('squad-me', JSON.stringify(user.login)) : localStorage.removeItem('squad-me'); } catch {}
   disarm();
@@ -340,6 +418,7 @@ async function render(member) {
   btn.innerHTML = 'Friendship&shy;mog';
   root.querySelectorAll('.here__pips i').forEach(p => p.classList.remove('on'));
   show('#here-welcome', false);
+  show('#here-code', false);
   show('#here-signin', !user);
   show('#here-app', !!user);
   $('#here-title').textContent = user ? 'Check in' : 'Log in';
@@ -370,6 +449,11 @@ async function render(member) {
 }
 
 $('#here-join').onsubmit = join;
+$('#here-claim').onsubmit = claim;
+$('#here-code-btn').onclick = showCode;
+// the same server the page talks to, so a local site signs in locally
+$('#here-github').href = `${API}/api/auth/github`;
+$('#here-github').onclick = githubFromApp;
 $('#here-signout').onclick = async () => {
   await api('/api/signout', {}).catch(() => {});
   store.set(null);
@@ -390,14 +474,19 @@ if (handed) {
 say('Waking the check-in server…');
 api('/api/config').then(({ github }) => {
   show('#here-github', github);
-  if (!store.get()) return render(null);
+  if (!store.get()) {
+    try {
+      const p = JSON.parse(localStorage.getItem(PENDING));
+      if (p?.nonce && Date.now() < p.until) startCollecting(p);
+    } catch {}
+    return render(null);
+  }
   return api('/api/me').then(({ member }) => render(member));
 }).catch(e => say(e.message));
 
 // Install as an app. Chrome and Android hand over a prompt to show on a tap;
 // iPhone has none, so it gets the two taps written out. Hidden once installed.
-const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-if (!installed) {
+if (!standalone) {
   let prompt;
   addEventListener('beforeinstallprompt', e => {
     e.preventDefault();

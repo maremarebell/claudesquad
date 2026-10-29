@@ -16,10 +16,15 @@ permalink: /here/
       <label>GitHub username <input name="github" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="39" required></label>
       <button class="here__btn" type="submit">Join the squad</button>
     </form>
+    <form class="here__join here__code" id="here-claim">
+      <label>Already joined on another phone? <input name="code" placeholder="ABCD-EFGH" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="12" required></label>
+      <button class="here__btn" type="submit">Sign in with a code</button>
+    </form>
   </div>
 
   <div id="here-app" hidden>
-    <p class="here__who">Signed in as <b id="here-name"></b> · <button class="here__link" id="here-signout" type="button">Sign out</button></p>
+    <p class="here__who">Signed in as <b id="here-name"></b> · <button class="here__link" id="here-signout" type="button">Sign out</button> · <button class="here__link" id="here-code-btn" type="button">Sign in somewhere else</button></p>
+    <p class="here__who" id="here-code" hidden>On the other phone or in the app, type <b class="here__code-value" id="here-code-value"></b> under "Sign in with a code". It works once, for ten minutes.</p>
 
     <div id="here-checkin" hidden>
       <div class="here__stage" aria-hidden="true"><div class="here__pig" id="here-pig"></div></div>

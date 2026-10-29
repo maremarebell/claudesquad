@@ -129,6 +129,26 @@ await check('members post what they work on; anyone reads it; only the author de
   assert.equal((await call('/api/posts')).body.length, 0);
 });
 
+await check('a code from one phone signs you in on another, once', async () => {
+  const made = await call('/api/auth/code', { method: 'POST', token: ana.token });
+  assert.match(made.body.code, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.equal((await call('/api/auth/code', { method: 'POST' })).status, 401);
+  // typed lower-case, without the dash, still works
+  const typed = made.body.code.replace('-', '').toLowerCase();
+  const got = await call('/api/auth/claim', { method: 'POST', body: { code: typed } });
+  assert.equal(got.status, 200);
+  assert.equal(got.body.member.name, 'Ana');
+  assert.equal((await call('/api/me', { token: got.body.token })).body.member.login, 'ana-gh');
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: made.body.code } })).status, 404);
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: 'ABCD-EFGH' } })).status, 404);
+});
+
+await check('a code older than ten minutes is refused', async () => {
+  const made = await call('/api/auth/code', { method: 'POST', token: ben.token });
+  sql("update claudesquad.handoffs set at = now() - interval '11 minutes'");
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: made.body.code } })).status, 404);
+});
+
 await check('signing out ends the session', async () => {
   await call('/api/signout', { method: 'POST', token: cy.token });
   assert.equal((await call('/api/me', { token: cy.token })).status, 401);
