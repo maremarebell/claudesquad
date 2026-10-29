@@ -1281,6 +1281,57 @@ h2 {
   flex: 1;
 }
 
+/* motion debug: a quiet switch under the button, a readout pinned top left */
+.here__debug {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  margin-top: var(--space-sm);
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.here__debug input {
+  accent-color: var(--accent);
+}
+
+.motion-debug {
+  position: fixed;
+  top: env(safe-area-inset-top, 0);
+  left: 0;
+  z-index: calc(var(--z-chrome) + 20);
+  padding: var(--space-2xs);
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--site-bg) 94%, transparent);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: var(--text-3xs);
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.motion-debug b {
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.motion-debug pre {
+  margin: var(--space-3xs) 0;
+  font: inherit;
+}
+
+.motion-debug canvas {
+  display: block;
+  width: 200px;
+  height: 56px;
+}
+
 .here__haptic {
   position: absolute;
   opacity: 0;

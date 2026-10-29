@@ -27,7 +27,10 @@ export function tally(rows, eventDates, today) {
 // A friendshipmog is SHAKES hard jolts inside a second. One jolt spans several
 // motion samples, so a sample within `gap` ms of the last counted jolt is the
 // same jolt. `threshold` is m/s² above gravity.
-export function shakeCounter({ need = SHAKES, within = 1000, gap = 150, threshold = 14 } = {}) {
+export const SHAKE = { need: SHAKES, within: 1000, gap: 150, threshold: 14 };
+
+export function shakeCounter(opts = {}) {
+  const { need, within, gap, threshold } = { ...SHAKE, ...opts };
   let hits = [];
   return (t, accel) => {
     if (!accel || Math.hypot(accel.x, accel.y, accel.z) - 9.81 < threshold) return 0;
