@@ -2,7 +2,7 @@
 // them (test/server-rules.test.mjs). index.mjs wires them to the routes.
 import { createHash } from 'node:crypto';
 
-export const LIVE_SITE = 'https://claudesquad.onrender.com';
+export const LIVE_SITE = 'https://claudesquad.org';
 export const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 export const DATE = /^\d{4}-\d{2}-\d{2}$/;
 // what the home-screen app sends to collect a GitHub sign-in
@@ -16,9 +16,12 @@ export class Oops extends Error {
 
 export const hash = token => createHash('sha256').update(token).digest('hex');
 
-// SITE_URL may carry a path or trailing slash; the live site is always allowed.
-export const allowedOrigins = siteUrl =>
-  new Set([new URL(siteUrl).origin, LIVE_SITE, 'http://localhost:8080', 'http://127.0.0.1:8080']);
+// SITE_URL may carry a path or trailing slash; the live site is always
+// allowed, at its own domain and at Render's.
+export const allowedOrigins = siteUrl => new Set([
+  new URL(siteUrl).origin, LIVE_SITE, 'https://www.claudesquad.org', 'https://claudesquad.onrender.com',
+  'http://localhost:8080', 'http://127.0.0.1:8080',
+]);
 
 // Neon's pooled host ("-pooler") rejects the search_path startup option, so
 // connect to the direct host instead. Local and single-word hosts (Docker)

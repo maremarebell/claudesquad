@@ -16,6 +16,8 @@ test('session tokens are stored as a stable sha256', () => {
 test('the live site and local dev are always allowed origins, whatever SITE_URL looks like', () => {
   const origins = allowedOrigins('https://preview.example.com/some/path/');
   assert.ok(origins.has('https://preview.example.com'));
+  assert.ok(origins.has('https://claudesquad.org'));
+  assert.ok(origins.has('https://www.claudesquad.org'));
   assert.ok(origins.has('https://claudesquad.onrender.com'));
   assert.ok(origins.has('http://localhost:8080'));
   assert.ok(origins.has('http://127.0.0.1:8080'));

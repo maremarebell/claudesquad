@@ -27,7 +27,7 @@ services:
       - key: DB_SCHEMA
         value: claudesquad
       - key: SITE_URL
-        value: https://claudesquad.onrender.com
+        value: https://claudesquad.org
       # Sign in with GitHub turns on when GITHUB_CLIENT_ID and GITHUB_SECRET
       # are set on this service (from a GitHub OAuth app whose callback is
       # https://claudesquad-api-z7dp.onrender.com/api/auth/github/callback).

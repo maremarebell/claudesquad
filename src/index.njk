@@ -54,7 +54,7 @@ title: Home
 <!-- three imports its core: fetch both now instead of one after the other -->
 <link rel="modulepreload" href="https://unpkg.com/three@0.180.0/build/three.module.min.js" crossorigin>
 <link rel="modulepreload" href="https://unpkg.com/three@0.180.0/build/three.core.min.js" crossorigin>
-<script type="module" src="/js/hero.js"></script>
+<script type="module" src="{{ js }}/hero.js"></script>
 
 <div class="content">
   <h2>What is Claude Squad?</h2>
@@ -76,7 +76,7 @@ title: Home
   </div>
 </section>
 <script type="application/json" id="board-config">{{ { prRepos: prRepos, events: events } | dump | replace("<", "\\u003c") | safe }}</script>
-<script type="module" src="/js/board.js"></script>
+<script type="module" src="{{ js }}/board.js"></script>
 
 <div class="gallery">
   <h2>Photos</h2>
