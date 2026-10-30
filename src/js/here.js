@@ -195,7 +195,7 @@ async function renderBoard() {
   countTo($('#here-points'), me.points);
   $('#here-tally').textContent = `${plural(me.meetups, 'meetup')} · ${plural(me.prs, 'PR')}`;
 
-  $('#here-faces').replaceChildren(...present.map(avatar));
+  $('#here-faces').replaceChildren(...present.map(m => avatar(m)));
   show('#here-present', present.length > 0);
 
   $('#here-board').replaceChildren(...rows.map(({ member, points }) => {
@@ -287,6 +287,14 @@ function rearm(msg) {
 // just watching for a check-in) is what lets someone who's already in see
 // that their newcomer arrived, and it catches a partner who bumped a moment
 // later. If the user changes mid-wait, the loop just stops.
+//
+// Any number can bump together: after the first match the group stays open,
+// re-sending until GROUP_MS pass with nobody new, so a third or fourth phone
+// that shakes in a moment later lands on every screen too.
+const GROUP_MS = 6000;
+const GROUP_MAX_MS = 40000;
+const and = list => new Intl.ListFormat('en', { type: 'conjunction' }).format(list);
+
 async function bump() {
   if (checkingIn || !user) return;
   const me = user;
@@ -295,53 +303,92 @@ async function bump() {
   root.classList.add('here--waiting');
   say('Bumping…');
   const wasIn = root.classList.contains('here--checked-in');
+  const group = new Map();
+  let mine = 0;
+  let first = 0;
+  let last = 0;
   try {
-    for (let i = 0; i <= 10; i++) {
+    for (let i = 0; ; i++) {
       if (i) await sleep(2000);
       if (user !== me) return;
       const at = await locate();
       const data = await api('/api/bump', { lat: at.lat, lng: at.lng });
       if (user !== me) return;
-      if (data.matched) return landed(data.members, wasIn);
-      if (!i) say('Now get someone next to you to shake too…');
+      const fresh = (data.members || []).filter(m => !group.has(m.id));
+      fresh.forEach(m => group.set(m.id, m));
+      if (fresh.length) {
+        last = Date.now();
+        if (!first) {
+          first = last;
+          mine = await landed(fresh, wasIn);
+        } else {
+          joined(fresh, [...group.values()]);
+        }
+      }
+      if (first ? Date.now() - last > GROUP_MS || Date.now() - first > GROUP_MAX_MS : i >= 10) break;
+      if (!i && !first) say('Now get someone next to you to shake too…');
     }
-    rearm('Nobody shook back. Shake together, at the same time.');
   } catch (e) {
-    if (user === me) rearm(e.message);
+    if (user === me && !first) return rearm(e.message);
   }
+  if (user !== me) return;
+  if (!first) return rearm('Nobody shook back. Shake together, at the same time.');
+  finish(wasIn, [...group.values()], mine);
 }
 
+const smash = them => collide({ me: user, them, reduced: REDUCED.matches, shake: root, onImpact: () => buzz([90, 70, 160]) });
+
 // Matched. Celebrate, and on someone's first meetup put the GitHub link
-// right there, because that's the moment they're in the squad.
+// right there, because that's the moment they're in the squad. The group
+// stays open after this, so checkingIn stays set and a tap can't re-arm.
 async function landed(members, wasIn) {
-  const me = user;
-  const names = members.map(m => m.name);
   // the collision plays while the board refreshes underneath it; two heavy
   // hits land with the faces
-  collide({ me, them: members, reduced: REDUCED.matches, shake: root, onImpact: () => buzz([90, 70, 160]) });
+  smash(members);
   root.classList.remove('here--waiting', 'here--armed');
   root.classList.add('here--checked-in');
   if (!wasIn) $('#here-checkin-btn').hidden = true;
-  const who = names.length ? ` with ${names.join(', ')}` : '';
+  const who = and(members.map(m => m.name));
   let mine = 0;
   try {
     ({ mine } = await renderBoard());
   } catch (e) {
-    checkingIn = false;
-    return say(e.message);
+    say(e.message);
+    return 0;
   }
-  // checkingIn stays set until here, so a tap during the refresh can't re-arm
-  checkingIn = false;
-  if (user !== me) return;
   if (wasIn) {
-    say(`Bumped${who}. They're in.`);
+    say(`Bumped with ${who}. They're in. More can shake in now.`);
     burst(false);
-    root.classList.add('here--armed');
-    return listen();
+    return mine;
   }
-  say(`Bumped${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}.`);
+  say(`Bumped with ${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}. More can shake in now.`);
   burst([1, 5, 10, 25, 50, 100].includes(mine));
   show('#here-welcome', mine === 1);
+  return mine;
+}
+
+// Someone else shook in while the group was open.
+function joined(fresh, everyone) {
+  smash(fresh);
+  burst(false);
+  say(`${and(fresh.map(m => m.name))} joined. Bumped with ${and(everyone.map(m => m.name))}.`);
+  renderBoard().catch(() => {});
+}
+
+// The group closed: one line for all of it. Someone who was already in goes
+// back to bumping more in.
+function finish(wasIn, everyone, mine) {
+  checkingIn = false;
+  const who = and(everyone.map(m => m.name));
+  const n = everyone.length + 1;
+  const all = n > 2 ? ` All ${n} of you are in.` : '';
+  say(wasIn || !mine
+    ? `Bumped with ${who}. ${n > 2 ? `All ${n} of you are in.` : "They're in."}`
+    : `Bumped with ${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}.${all}`);
+  if (wasIn) {
+    root.classList.add('here--armed');
+    listen();
+  }
 }
 
 function tapInstead(msg) {

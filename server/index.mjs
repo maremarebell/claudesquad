@@ -9,15 +9,16 @@
 //   GET  /api/me                                      -> { member }
 //   GET  /api/members                                 -> [member]
 //   GET  /api/board?dates=2026-10-15,...              -> [{ event_date, members }]
-//   POST /api/bump            { lat, lng }            -> { matched, members: [{ name, avatar_url }] }
+//   POST /api/bump            { lat, lng }            -> { matched, members: [{ id, name, avatar_url }] }
 //   GET  /api/leaderboard?dates=...                   -> [{ ...member, meetups }]   (public)
 //   GET  /api/posts                                   -> latest 50 posts            (public)
 //   POST /api/posts           { body, link }          -> post
 //   POST /api/posts/delete    { id }                  -> {}   (your own only)
 //   GET  /api/config                                  -> { github }
 //
-// A bump is like the old Bump app: two members shaking within 20 seconds and
-// 250 metres of each other are both checked in for today (New York date).
+// A bump is like the old Bump app: members shaking within 20 seconds and 250
+// metres of each other are all checked in for today (New York date). Any
+// number can bump together; each bump answers with everyone it matched.
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
@@ -290,7 +291,7 @@ const routes = {
       await client.query('commit');
       // names and faces, for the collision on the phone
       return rows.length
-        ? { matched: true, members: rows.map(r => ({ name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
+        ? { matched: true, members: rows.map(r => ({ id: r.member_id, name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
         : { matched: false };
     } catch (e) {
       await client.query('rollback');
