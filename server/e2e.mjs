@@ -13,7 +13,7 @@ const sql = q => execSync(`docker exec -i sq-pg psql -U postgres -tA`, { input: 
 
 sql('drop schema if exists claudesquad cascade; drop table if exists posts, sessions, bumps, checkins, members cascade;');
 const server = spawn('node', [new URL('./index.mjs', import.meta.url).pathname], {
-  env: { ...process.env, DATABASE_URL, PORT, SITE_URL: 'https://claudesquad.onrender.com' },
+  env: { ...process.env, DATABASE_URL, PORT, SITE_URL: 'https://claudesquad.org' },
   stdio: ['ignore', 'pipe', 'inherit'],
 });
 await new Promise(r => server.stdout.once('data', r));
@@ -98,8 +98,10 @@ await check('two bumps in the same instant still match', async () => {
 });
 
 await check('the site may call the API; other origins get no CORS header', async () => {
-  const ok = await call('/api/config', { origin: 'https://claudesquad.onrender.com' });
-  assert.equal(ok.headers.get('access-control-allow-origin'), 'https://claudesquad.onrender.com');
+  for (const origin of ['https://claudesquad.org', 'https://claudesquad.onrender.com']) {
+    const ok = await call('/api/config', { origin });
+    assert.equal(ok.headers.get('access-control-allow-origin'), origin);
+  }
   const no = await call('/api/config', { origin: 'https://evil.example' });
   assert.equal(no.headers.get('access-control-allow-origin'), null);
 });
