@@ -258,17 +258,34 @@ function burst(big) {
 // Where the phone is. Asked at the tap to warm it up, then again for every
 // bump (a fix up to 30s old is reused), so walking to the gym with the page
 // open doesn't leave a stale location behind. Matches are within 250m.
-function locate() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error("This browser can't share a location."));
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      err => reject(new Error(err.code === err.PERMISSION_DENIED
-        ? 'Location is off. A bump needs it to know you are with the squad.'
-        : "Couldn't get a location. Step outside the weights room and try again.")),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
-    );
-  });
+// Indoors GPS often never gets a fix, so a timeout falls back to the phone's
+// rough location (wifi and cell towers), which is still well inside 250m.
+const where = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+  pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }), reject, opts));
+
+async function locate() {
+  if (!navigator.geolocation) throw new Error("This browser can't share a location.");
+  try {
+    return await where({ enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+  } catch (err) {
+    if (err.code === err.PERMISSION_DENIED) throw new Error('Location is off. A bump needs it to know you are with the squad.');
+    try {
+      return await where({ enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+    } catch {
+      throw new Error("Couldn't get a location. Step outside the weights room and try again.");
+    }
+  }
+}
+
+// A motion reading the shake counter can use. Some phones leave the
+// gravity-included axes empty but fill in plain acceleration: that one is
+// already gravity-free, so its size is handed over as the jolt.
+function reading(e) {
+  const g = e.accelerationIncludingGravity;
+  if (g && [g.x, g.y, g.z].every(Number.isFinite)) return g;
+  const a = e.acceleration;
+  if (a && [a.x, a.y, a.z].every(Number.isFinite)) return { x: 0, y: 0, z: 9.81 + Math.hypot(a.x, a.y, a.z) };
+  return null;
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -413,16 +430,20 @@ function listen() {
     btn.disabled = false;
     return;
   }
-  btn.textContent = 'Shake!';
-  btn.disabled = true;
+  // the button stays live: a tap bumps too, for shakes that don't register
+  btn.textContent = 'Shake! (or tap)';
+  btn.disabled = false;
   const pips = [...root.querySelectorAll('.here__pips i')];
   // nothing typed should be left in focus while the phone shakes
   document.activeElement?.blur?.();
   const step = shakeCounter({ profile: shakeProfile });
   let heard = false;
   const onMotion = e => {
+    const accel = reading(e);
+    // readings with no numbers don't count as the phone sending motion
+    if (!accel) return;
     heard = true;
-    const n = step(e.timeStamp, e.accelerationIncludingGravity);
+    const n = step(e.timeStamp, accel);
     if (!n) return;
     buzz(25);
     rep(n);
@@ -433,7 +454,7 @@ function listen() {
     }
   };
   addEventListener('devicemotion', onMotion);
-  // sensors blocked in site settings never send an event: hand the tap back
+  // sensors blocked in site settings never send a usable reading: say so
   const silent = setTimeout(() => {
     if (heard || checkingIn) return;
     root.classList.remove('here--motion');
