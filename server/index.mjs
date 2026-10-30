@@ -2,20 +2,23 @@
 // Postgres. The static site calls it from the browser.
 //
 //   POST /api/join            { name, github }        -> { token, member }
-//   GET  /api/auth/github                             -> GitHub sign-in (when configured)
+//   GET  /api/auth/github?app=NONCE                   -> GitHub sign-in (when configured)
 //   GET  /api/auth/github/callback                    -> back to /here/#token=...
+//   POST /api/auth/code                               -> { code }   (signed in; for another phone)
+//   POST /api/auth/claim      { code }                -> { token, member }
 //   GET  /api/me                                      -> { member }
 //   GET  /api/members                                 -> [member]
 //   GET  /api/board?dates=2026-10-15,...              -> [{ event_date, members }]
-//   POST /api/bump            { lat, lng }            -> { matched, members: [{ name, avatar_url }] }
+//   POST /api/bump            { lat, lng }            -> { matched, members: [{ id, name, avatar_url }] }
 //   GET  /api/leaderboard?dates=...                   -> [{ ...member, meetups }]   (public)
 //   GET  /api/posts                                   -> latest 50 posts            (public)
 //   POST /api/posts           { body, link }          -> post
 //   POST /api/posts/delete    { id }                  -> {}   (your own only)
 //   GET  /api/config                                  -> { github }
 //
-// A bump is like the old Bump app: two members shaking within 20 seconds and
-// 250 metres of each other are both checked in for today (New York date).
+// A bump is like the old Bump app: members shaking within 20 seconds and 250
+// metres of each other are all checked in for today (New York date). Any
+// number can bump together; each bump answers with everyone it matched.
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createHash, randomBytes } from 'node:crypto';
@@ -70,6 +73,15 @@ async function setUp() {
 const hash = token => createHash('sha256').update(token).digest('hex');
 const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const NONCE = /^[A-Za-z0-9_-]{20,64}$/;
+// no 0/O or 1/I/L, so a code read off one phone types cleanly into another
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const cleanCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+async function handOff(code, memberId) {
+  await db.query("delete from handoffs where at < now() - interval '10 minutes'");
+  await db.query('insert into handoffs (code_hash, member_id) values ($1, $2) on conflict do nothing', [hash(code), memberId]);
+}
 
 class Oops extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -114,17 +126,20 @@ const routes = {
     // so typing a friend's username doesn't take over their points.
     const taken = await db.query('select id, verified from members where lower(login) = lower($1)', [login]);
     if (taken.rows[0]) throw new Oops(409, github
-      ? 'That GitHub username is already in the squad. Use Sign in with GitHub to get back in.'
-      : 'That GitHub username is already in the squad on another phone. Use that phone, or ask a captain.');
+      ? 'That GitHub username is already in the squad. Use Sign in with GitHub, or a code from your other phone.'
+      : 'That GitHub username is already in the squad. On the phone you joined with, tap "Sign in somewhere else" and type the code here.');
     const { rows } = await db.query(
       'insert into members (login, name, avatar_url) values ($1, $2, $3) returning id, login, name, avatar_url, verified',
       [login, clean, avatarFor(login)]);
     return { token: await signIn(rows[0].id), member: rows[0] };
   },
 
-  'GET /api/auth/github': async (req, res) => {
+  'GET /api/auth/github': async (req, res, url) => {
     if (!github) throw new Oops(404, 'GitHub sign-in is not set up');
-    const state = randomBytes(16).toString('hex');
+    // The home-screen app passes a nonce, then collects the session with it
+    // from /api/auth/claim, wherever this sign-in ends up finishing.
+    const app = url.searchParams.get('app');
+    const state = randomBytes(16).toString('hex') + (NONCE.test(app || '') ? `.${app}` : '');
     res.writeHead(302, {
       'Set-Cookie': `gh_state=${state}; Path=/api/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
       Location: `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&state=${state}&scope=read:user&redirect_uri=${encodeURIComponent(`${API_URL}/api/auth/github/callback`)}`,
@@ -133,7 +148,7 @@ const routes = {
   },
 
   'GET /api/auth/github/callback': async (req, res, url) => {
-    const state = (req.headers.cookie || '').match(/gh_state=([a-f0-9]+)/)?.[1];
+    const state = (req.headers.cookie || '').match(/gh_state=([a-f0-9]+(?:\.[A-Za-z0-9_-]+)?)/)?.[1];
     if (!state || state !== url.searchParams.get('state')) throw new Oops(400, 'Sign-in expired, try again.');
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -151,9 +166,31 @@ const routes = {
          name = coalesce(members.name, excluded.name)
        returning id`,
       [gh.login, gh.name || gh.login, gh.avatar_url, gh.id]);
+    const app = state.split('.')[1];
+    if (app) await handOff(app, rows[0].id);
     const token = await signIn(rows[0].id);
     res.writeHead(302, { Location: `${SITE_URL}/here/#token=${token}` });
     res.end();
+  },
+
+  // A code to sign in on another phone, or in the home-screen app.
+  'POST /api/auth/code': async req => {
+    const me = await whoami(req);
+    const code = [...randomBytes(8)].map(b => CODE_CHARS[b % CODE_CHARS.length]).join('');
+    await handOff(code, me.id);
+    return { code: `${code.slice(0, 4)}-${code.slice(4)}` };
+  },
+
+  // Each code or nonce works once, for ten minutes.
+  'POST /api/auth/claim': async req => {
+    const { code } = await body(req);
+    const raw = String(code || '');
+    const key = NONCE.test(raw) ? raw : cleanCode(raw);
+    const { rows } = await db.query(
+      `delete from handoffs where code_hash = $1 and at > now() - interval '10 minutes' returning member_id`, [hash(key)]);
+    if (!rows[0]) throw new Oops(404, "That code didn't work. Codes last ten minutes; get a new one.");
+    const member = await db.query('select id, login, name, avatar_url, verified from members where id = $1', [rows[0].member_id]);
+    return { token: await signIn(rows[0].member_id), member: member.rows[0] };
   },
 
   'GET /api/me': async req => ({ member: await whoami(req) }),
@@ -254,7 +291,7 @@ const routes = {
       await client.query('commit');
       // names and faces, for the collision on the phone
       return rows.length
-        ? { matched: true, members: rows.map(r => ({ name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
+        ? { matched: true, members: rows.map(r => ({ id: r.member_id, name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
         : { matched: false };
     } catch (e) {
       await client.query('rollback');

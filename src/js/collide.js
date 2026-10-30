@@ -1,5 +1,6 @@
-// The bump collision: the moment two phones match. Both faces fly in from
-// opposite edges, tilted in 3D, and smash together in the middle; on impact a
+// The bump collision: the moment phones match. Two faces fly in from opposite
+// edges, a bigger group from all around (up to MAX faces, smaller the more
+// there are), tilted in 3D, and smash together in the middle; on impact a
 // shockwave rings out, the screen flashes and shakes, pixel shards scatter and
 // BUMPED slams in. About a second and a half, then it clears itself. With
 // reduced motion it's a still card for the same time instead.
@@ -12,15 +13,30 @@ const IMPACT = 420;
 const FLY = 1500;
 const STAGE = 1900;
 
-// one face thrown in from its edge (s = -1 left, 1 right), tilted away and
-// accelerating, so the two meet exactly at IMPACT
-function fly(img, s) {
+const MAX = 8;
+
+// Where each face ends up: on a ring around the middle, the first (you) on the
+// left. Two faces overlap at 34px out, the original pair; more sit on a ring
+// just tight enough that neighbours overlap a little.
+function layout(n) {
+  const size = n <= 2 ? 104 : Math.max(56, 104 - 14 * (n - 2));
+  const r = n <= 2 ? 34 : 0.8 * (size / 2) / Math.sin(Math.PI / n);
+  return { size, r, at: i => Math.PI + (i * 2 * Math.PI) / n };
+}
+
+// one face thrown in from its edge along angle a, tilted away and
+// accelerating, so they all meet exactly at IMPACT; s tips it by its side
+function fly(img, a, r) {
+  const x = Math.cos(a);
+  const y = Math.sin(a);
+  const s = x < -0.01 ? -1 : x > 0.01 ? 1 : y > 0 ? 1 : -1;
+  const to = k => `translate(${x * r * k}px, ${y * r * k}px)`;
   img.animate([
-    { transform: `translate(${s * 60}vw, ${-s * 10}vh) rotateY(${-s * 70}deg) rotateZ(${s * 25}deg) scale(.6)`, easing: EASE_IN },
-    { transform: `translate(${s * 34}px, 0) rotateY(0) rotateZ(${s * 8}deg) scale(1)`, offset: IMPACT / FLY },
-    { transform: `translate(${s * 48}px, 0) rotateZ(${s * 14}deg) scale(1.08)`, offset: 0.42 },
-    { transform: `translate(${s * 40}px, 0) rotateZ(${s * 10}deg) scale(1)`, offset: 0.75 },
-    { transform: `translate(${s * 40}px, -30vh) rotateZ(${s * 10}deg) scale(.7)`, opacity: 0 },
+    { transform: `translate(${x * 60}vw, ${y * 50 - x * 10}vh) rotateY(${-s * 70}deg) rotateZ(${s * 25}deg) scale(.6)`, easing: EASE_IN },
+    { transform: `${to(1)} rotateY(0) rotateZ(${s * 8}deg) scale(1)`, offset: IMPACT / FLY },
+    { transform: `${to(1.41)} rotateZ(${s * 14}deg) scale(1.08)`, offset: 0.42 },
+    { transform: `${to(1.18)} rotateZ(${s * 10}deg) scale(1)`, offset: 0.75 },
+    { transform: `${to(1.18)} translateY(-30vh) rotateZ(${s * 10}deg) scale(.7)`, opacity: 0 },
   ], { duration: FLY, fill: 'forwards' });
 }
 
@@ -28,13 +44,25 @@ export function collide({ me, them, reduced, shake, onImpact }) {
   const label = el('p', { className: 'collide__label' },
     el('span', { className: 'collide__word', textContent: 'Bumped' }),
     el('span', { className: 'collide__names', textContent: [me.name, ...them.map(t => t.name)].join(' + ') }));
-  const left = avatar(me, 'collide__face collide__face--left');
-  const right = avatar(them[0], 'collide__face collide__face--right');
-  const stage = el('div', { className: 'collide', ariaHidden: 'true' }, left, right, label);
+  const people = [me, ...them].slice(0, MAX);
+  const { size, r, at } = layout(people.length);
+  const faces = people.map(m => {
+    const img = avatar(m, 'collide__face');
+    Object.assign(img.style, { width: `${size}px`, height: `${size}px`, margin: `${-size / 2}px 0 0 ${-size / 2}px` });
+    return img;
+  });
+  // a bigger ring pushes the words down below it
+  if (people.length > 2) label.style.top = `calc(44% + ${Math.round(r * 1.18 + size / 2 + 16)}px)`;
+  const stage = el('div', { className: 'collide', ariaHidden: 'true' }, ...faces, label);
   document.body.append(stage);
 
   if (reduced) {
     stage.classList.add('collide--still');
+    // the faces where they'd have landed, tipped by side, and the words
+    faces.forEach((img, i) => {
+      const a = at(i);
+      img.style.transform = `translate(${Math.cos(a) * r * 1.18}px, ${Math.sin(a) * r * 1.18}px) rotate(${Math.cos(a) < 0 ? -10 : 10}deg)`;
+    });
     stage.animate([{ opacity: 0 }, { opacity: 1, offset: 0.15 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }], STAGE)
       .onfinish = () => stage.remove();
     onImpact?.();
@@ -48,8 +76,7 @@ export function collide({ me, them, reduced, shake, onImpact }) {
     { backgroundColor: 'rgba(0, 0, 0, .62)', offset: 0.8 },
     { backgroundColor: 'rgba(0, 0, 0, 0)' },
   ], STAGE).onfinish = () => stage.remove();
-  fly(left, -1);
-  fly(right, 1);
+  faces.forEach((img, i) => fly(img, at(i), r));
 
   setTimeout(() => {
     onImpact?.();

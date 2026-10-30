@@ -43,6 +43,10 @@
 
   /* page edge: content lines up just inside the two page hairlines */
   --gutter: calc(6vw + var(--space-md));
+  /* every profile picture is a square with the same frame; the small ones
+     (rows, posts, today's faces) are all this size */
+  --face: 40px;
+  --face-frame: 2px solid var(--accent);
 
   /* stacking, lowest first */
   --z-scene: 1;
@@ -759,6 +763,19 @@ h2 {
   margin-top: var(--space-md);
 }
 
+/* sign in with a code from another phone: below the join, split by a rule */
+.here__code {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--rule);
+}
+
+.here__code-value {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  user-select: all;
+}
+
 .here__join label {
   display: flex;
   flex-direction: column;
@@ -860,17 +877,11 @@ h2 {
   width: 104px;
   height: 104px;
   margin: -52px 0 0 -52px;
-  border-radius: 50%;
-  border: 4px solid var(--ink);
-  box-shadow: 0 0 0 4px var(--accent), 0 18px 40px rgba(0, 0, 0, 0.6);
+  border: var(--face-frame);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
   background: var(--card-bg);
   object-fit: cover;
   transform-style: preserve-3d;
-}
-
-.collide__face.is-pig {
-  object-fit: contain;
-  padding: 14px;
 }
 
 .collide__ring {
@@ -933,17 +944,10 @@ h2 {
   color: var(--ink);
 }
 
-/* reduced motion: the two faces side by side and the words, no flight */
+/* reduced motion: the faces where they'd have landed (placed by collide.js)
+   and the words, no flight */
 .collide--still {
   background: rgba(0, 0, 0, 0.7);
-}
-
-.collide--still .collide__face--left {
-  transform: translateX(-40px) rotate(-10deg);
-}
-
-.collide--still .collide__face--right {
-  transform: translateX(40px) rotate(10deg);
 }
 
 .collide--still .collide__label {
@@ -1197,21 +1201,41 @@ h2 {
   gap: var(--space-3xs);
 }
 
-.here__face {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
+.here__face,
+.board__face,
+.working__face {
+  width: var(--face);
+  height: var(--face);
+  flex: none;
+}
+
+.here__face,
+.board__face,
+.working__face,
+.collide__face,
+.profile__photo,
+.members__photo {
+  aspect-ratio: 1;
+  border: var(--face-frame);
   background: var(--card-bg);
   object-fit: cover;
 }
 
+/* no GitHub picture: the pig, framed the same, with room around it */
+.here__face.is-pig,
+.board__face.is-pig,
+.working__face.is-pig {
+  object-fit: contain;
+  padding: var(--space-3xs);
+}
+
+.collide__face.is-pig {
+  object-fit: contain;
+  padding: var(--space-sm);
+}
+
 /* today's faces are stickers, each stuck on at its own slight angle */
 .here__faces .here__face {
-  width: 52px;
-  height: 52px;
-  border: 3px solid var(--ink);
-  box-shadow: 0 0 0 2px var(--accent);
   transform: rotate(-5deg);
   transition: transform 0.2s;
 }
@@ -1270,11 +1294,6 @@ h2 {
 
 .here__board li:first-child::before {
   color: var(--on-accent);
-}
-
-.here__board .here__face {
-  width: 28px;
-  height: 28px;
 }
 
 .here__board span {
@@ -1486,15 +1505,6 @@ h2 {
   color: var(--accent);
 }
 
-.board__face {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
-  object-fit: cover;
-  background: var(--card-bg);
-}
-
 .board__who {
   display: flex;
   flex-direction: column;
@@ -1534,13 +1544,6 @@ h2 {
 
 .board--in .board__bar {
   width: var(--w);
-}
-
-.board__face.is-pig,
-.working__face.is-pig,
-.here__face.is-pig {
-  object-fit: contain;
-  padding: 6px;
 }
 
 .board__row.is-you .board__name::after {
@@ -1728,14 +1731,6 @@ h2 {
   .working__post:first-child {
     animation: row-in 0.4s both cubic-bezier(.2, .8, .2, 1);
   }
-}
-
-.working__face {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 2px solid var(--accent);
-  object-fit: cover;
 }
 
 .content p.working__meta {
@@ -1933,16 +1928,8 @@ h2 {
 .profile__photo {
   width: 180px;
   height: 180px;
-  object-fit: cover;
   margin: 0 0 var(--space-md);
   display: block;
-  border: 1px solid var(--accent);
-  padding: var(--space-3xs);
-  filter: grayscale(1) contrast(1.1);
-}
-
-.profile__photo--placeholder {
-  background: var(--card-bg);
 }
 
 .profile__name {
@@ -1969,7 +1956,8 @@ h2 {
   border-top: 1px solid var(--rule);
 }
 
-/* Members index: ruled grid, photos in grayscale until hovered */
+/* Members index: ruled grid. Photos stay in colour like every other face, so
+   the accent frame reads the same everywhere (a grayscale filter would gray it). */
 .members__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1992,17 +1980,12 @@ h2 {
 
 .members__photo {
   width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
   margin-bottom: var(--space-2xs);
-  filter: grayscale(1) contrast(1.1);
 }
 
-.members__item:hover .members__photo {
-  filter: none;
-}
-
-.members__photo--placeholder {
+/* no photo yet: the same hatched square on the index and the profile page */
+.members__photo--placeholder,
+.profile__photo--placeholder {
   background:
     repeating-linear-gradient(-45deg, var(--border) 0 1px, transparent 1px 10px),
     var(--card-bg);

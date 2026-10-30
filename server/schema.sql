@@ -55,3 +55,12 @@ as $$
     + cos(radians(lat1)) * cos(radians(lat2)) * sin(radians(lng2 - lng1) / 2) ^ 2
   ))
 $$;
+
+-- One-time sign-in handoffs, ten minutes each: a code typed into another
+-- phone, or the home-screen app collecting a GitHub sign-in that finished in
+-- the browser (on iPhone the two keep separate storage). Only hashes are kept.
+create table if not exists handoffs (
+  code_hash text primary key,
+  member_id uuid not null references members on delete cascade,
+  at timestamptz not null default now()
+);

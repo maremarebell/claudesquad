@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nyToday, tally, shakeCounter, countPRs, leaderboard, SHAKES, POINTS } from '../src/js/checkin.js';
+import { nyToday, tally, shakeCounter, shakeBar, newShakeProfile, readShakeProfile, countPRs, leaderboard, SHAKES, POINTS } from '../src/js/checkin.js';
 
 const mare = { id: 'u2', name: 'Mare' };
 const iso = { id: 'u1', name: 'Iso' };
@@ -56,6 +56,7 @@ test('gentle movement and missing sensors do not count', () => {
   const step = shakeCounter();
   assert.equal(step(0, { x: 1, y: 2, z: 9.81 }), 0);
   assert.equal(step(500, null), 0);
+  assert.equal(step(800, { x: null, y: null, z: null }), 0);
 });
 
 test('the debounce counts at exactly the gap and caps at SHAKES', () => {
@@ -65,6 +66,64 @@ test('the debounce counts at exactly the gap and caps at SHAKES', () => {
   assert.equal(step(150, jolt), 2);
   assert.equal(step(300, jolt), 3);
   assert.equal(step(450, jolt), SHAKES);
+});
+
+// a jolt of a given strength above gravity
+const of = dev => ({ x: 0, y: 0, z: 9.81 + dev });
+
+test('a gentle shaker misses once, then the bar comes down to them', () => {
+  const profile = newShakeProfile();
+  const first = shakeCounter({ profile });
+  assert.equal(first(0, of(6)), 0);
+  assert.equal(first(300, of(6.5)), 0);
+  assert.equal(first(600, of(7)), 0);
+  assert.ok(shakeBar(profile) < 6);
+  const next = shakeCounter({ profile });
+  next(0, of(6)); next(300, of(6));
+  assert.equal(next(600, of(6)), SHAKES);
+});
+
+test('a hard shaker raises the bar, so half-hearted jolts stop counting', () => {
+  const profile = newShakeProfile();
+  const step = shakeCounter({ profile });
+  step(0, of(30)); step(300, of(32)); step(600, of(28));
+  assert.equal(shakeBar(profile), 15);
+  const next = shakeCounter({ profile });
+  assert.equal(next(0, of(11)), 0);
+  assert.equal(next(300, of(20)), 1);
+});
+
+test('a jolt is as strong as its strongest sample', () => {
+  const profile = newShakeProfile();
+  const step = shakeCounter({ profile });
+  step(0, of(11)); step(40, of(24));
+  step(300, of(11)); step(340, of(24));
+  step(600, of(11));
+  assert.deepEqual(profile.peaks.map(Math.round), [24, 24, 11]);
+});
+
+test('a jittery phone at rest lifts the bar above its jitter', () => {
+  const profile = newShakeProfile();
+  const step = shakeCounter({ profile });
+  for (let t = 0; t < 20000; t += 16) step(t, of(t % 32 ? 4 : 3.5));
+  assert.ok(profile.noise > 3.5);
+  assert.ok(shakeBar(profile) > 10);
+  assert.ok(shakeBar(profile) <= 16);
+});
+
+test('shaking itself is not learned as jitter', () => {
+  const profile = newShakeProfile();
+  const step = shakeCounter({ profile });
+  for (let t = 0; t < 900; t += 16) step(t, of(t % 300 < 20 ? 20 : 3));
+  assert.ok(profile.noise < 1);
+});
+
+test('a stored profile is read back, and junk starts over', () => {
+  assert.deepEqual(readShakeProfile('{"noise":1.2,"peaks":[8,9,10]}'), { noise: 1.2, peaks: [8, 9, 10] });
+  assert.deepEqual(readShakeProfile('{"noise":-1,"peaks":[]}'), newShakeProfile());
+  assert.deepEqual(readShakeProfile('{"noise":1,"peaks":["x"]}'), newShakeProfile());
+  assert.deepEqual(readShakeProfile(null), newShakeProfile());
+  assert.deepEqual(readShakeProfile('nope'), newShakeProfile());
 });
 
 test('in today on a non-meetup date shows up but does not score', () => {

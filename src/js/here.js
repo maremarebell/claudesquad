@@ -2,10 +2,10 @@
 // once it's set up), then on a meetup day shake your phone at the same time
 // as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
-import { SHAKES, POINTS, nyToday, tally, shakeCounter, leaderboard } from './checkin.js';
+import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard } from './checkin.js';
 import { PIG } from './pig.js';
 import { collide } from './collide.js';
-import { api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
+import { API, api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
@@ -84,16 +84,98 @@ async function join(e) {
       name: form.name.value,
       github: form.github.value.trim().replace(/^@/, ''),
     });
-    store.set(token);
     buzz(30);
-    await render(member);
-    say(`Welcome, ${member.name}. ${$('#here-status').textContent}`);
+    signedIn(token, `Welcome, ${member.name}.`);
   } catch (err) {
     say(err.message);
   } finally {
     btn.disabled = false;
   }
 }
+
+// iPhone offers "Undo Typing" when you shake a page you typed into, which
+// would pop up over every bump. Typing only happens on the way in, so signing
+// in starts the page over: a fresh page has nothing to undo.
+const WELCOME = 'squad-welcome';
+function signedIn(token, welcome) {
+  store.set(token);
+  try { welcome ? sessionStorage.setItem(WELCOME, welcome) : sessionStorage.removeItem(WELCOME); } catch {}
+  location.replace(location.pathname);
+}
+
+// A code from another phone where you're signed in. Also the way into the
+// home-screen app on iPhone, which doesn't share storage with Safari.
+async function claim(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    const { token } = await api('/api/auth/claim', { code: form.code.value });
+    buzz(30);
+    signedIn(token);
+  } catch (err) {
+    say(err.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function showCode() {
+  try {
+    const { code } = await api('/api/auth/code', {});
+    $('#here-code-value').textContent = code;
+    show('#here-code');
+  } catch (e) {
+    say(e.message);
+  }
+}
+
+// Sign in with GitHub from the home-screen app. On iPhone, GitHub's page
+// opens in Safari or an in-app browser whose storage isn't the app's, so the
+// token in the redirect never reaches the app. Instead the app sends a random
+// nonce along and collects the session with it once GitHub is done. The nonce
+// is kept, because iOS can close the app while you're in Safari.
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const PENDING = 'squad-github-nonce';
+let pending = null;
+let polling = null;
+
+async function collect() {
+  if (!pending || user) return;
+  if (Date.now() > pending.until) return stopCollecting();
+  try {
+    const { token } = await call('/api/auth/claim', { code: pending.nonce });
+    stopCollecting();
+    signedIn(token);
+  } catch {}
+}
+
+function stopCollecting() {
+  pending = null;
+  clearInterval(polling);
+  try { localStorage.removeItem(PENDING); } catch {}
+}
+
+function startCollecting(p) {
+  pending = p;
+  clearInterval(polling);
+  polling = setInterval(collect, 2000);
+}
+
+function githubFromApp(e) {
+  if (!standalone) return;
+  e.preventDefault();
+  const nonce = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const p = { nonce, until: Date.now() + 600000 };
+  try { localStorage.setItem(PENDING, JSON.stringify(p)); } catch {}
+  window.open(`${e.currentTarget.href}?app=${nonce}`, '_blank');
+  say('Finish signing in with GitHub, then come back here.');
+  startCollecting(p);
+}
+
+// coming back to the app checks straight away
+addEventListener('visibilitychange', () => { if (!document.hidden) collect(); });
 
 // Redraws points, today's faces and the leaderboard. Returns how many meetups
 // you have and whether you are already in today. Only meetup dates are read,
@@ -113,7 +195,7 @@ async function renderBoard() {
   countTo($('#here-points'), me.points);
   $('#here-tally').textContent = `${plural(me.meetups, 'meetup')} · ${plural(me.prs, 'PR')}`;
 
-  $('#here-faces').replaceChildren(...present.map(avatar));
+  $('#here-faces').replaceChildren(...present.map(m => avatar(m)));
   show('#here-present', present.length > 0);
 
   $('#here-board').replaceChildren(...rows.map(({ member, points }) => {
@@ -176,17 +258,34 @@ function burst(big) {
 // Where the phone is. Asked at the tap to warm it up, then again for every
 // bump (a fix up to 30s old is reused), so walking to the gym with the page
 // open doesn't leave a stale location behind. Matches are within 250m.
-function locate() {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error("This browser can't share a location."));
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      err => reject(new Error(err.code === err.PERMISSION_DENIED
-        ? 'Location is off. A bump needs it to know you are with the squad.'
-        : "Couldn't get a location. Step outside the weights room and try again.")),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
-    );
-  });
+// Indoors GPS often never gets a fix, so a timeout falls back to the phone's
+// rough location (wifi and cell towers), which is still well inside 250m.
+const where = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+  pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }), reject, opts));
+
+async function locate() {
+  if (!navigator.geolocation) throw new Error("This browser can't share a location.");
+  try {
+    return await where({ enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+  } catch (err) {
+    if (err.code === err.PERMISSION_DENIED) throw new Error('Location is off. A bump needs it to know you are with the squad.');
+    try {
+      return await where({ enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+    } catch {
+      throw new Error("Couldn't get a location. Step outside the weights room and try again.");
+    }
+  }
+}
+
+// A motion reading the shake counter can use. Some phones leave the
+// gravity-included axes empty but fill in plain acceleration: that one is
+// already gravity-free, so its size is handed over as the jolt.
+function reading(e) {
+  const g = e.accelerationIncludingGravity;
+  if (g && [g.x, g.y, g.z].every(Number.isFinite)) return g;
+  const a = e.acceleration;
+  if (a && [a.x, a.y, a.z].every(Number.isFinite)) return { x: 0, y: 0, z: 9.81 + Math.hypot(a.x, a.y, a.z) };
+  return null;
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -205,6 +304,14 @@ function rearm(msg) {
 // just watching for a check-in) is what lets someone who's already in see
 // that their newcomer arrived, and it catches a partner who bumped a moment
 // later. If the user changes mid-wait, the loop just stops.
+//
+// Any number can bump together: after the first match the group stays open,
+// re-sending until GROUP_MS pass with nobody new, so a third or fourth phone
+// that shakes in a moment later lands on every screen too.
+const GROUP_MS = 6000;
+const GROUP_MAX_MS = 40000;
+const and = list => new Intl.ListFormat('en', { type: 'conjunction' }).format(list);
+
 async function bump() {
   if (checkingIn || !user) return;
   const me = user;
@@ -213,53 +320,92 @@ async function bump() {
   root.classList.add('here--waiting');
   say('Bumping…');
   const wasIn = root.classList.contains('here--checked-in');
+  const group = new Map();
+  let mine = 0;
+  let first = 0;
+  let last = 0;
   try {
-    for (let i = 0; i <= 10; i++) {
+    for (let i = 0; ; i++) {
       if (i) await sleep(2000);
       if (user !== me) return;
       const at = await locate();
       const data = await api('/api/bump', { lat: at.lat, lng: at.lng });
       if (user !== me) return;
-      if (data.matched) return landed(data.members, wasIn);
-      if (!i) say('Now get someone next to you to shake too…');
+      const fresh = (data.members || []).filter(m => !group.has(m.id));
+      fresh.forEach(m => group.set(m.id, m));
+      if (fresh.length) {
+        last = Date.now();
+        if (!first) {
+          first = last;
+          mine = await landed(fresh, wasIn);
+        } else {
+          joined(fresh, [...group.values()]);
+        }
+      }
+      if (first ? Date.now() - last > GROUP_MS || Date.now() - first > GROUP_MAX_MS : i >= 10) break;
+      if (!i && !first) say('Now get someone next to you to shake too…');
     }
-    rearm('Nobody shook back. Shake together, at the same time.');
   } catch (e) {
-    if (user === me) rearm(e.message);
+    if (user === me && !first) return rearm(e.message);
   }
+  if (user !== me) return;
+  if (!first) return rearm('Nobody shook back. Shake together, at the same time.');
+  finish(wasIn, [...group.values()], mine);
 }
 
+const smash = them => collide({ me: user, them, reduced: REDUCED.matches, shake: root, onImpact: () => buzz([90, 70, 160]) });
+
 // Matched. Celebrate, and on someone's first meetup put the GitHub link
-// right there, because that's the moment they're in the squad.
+// right there, because that's the moment they're in the squad. The group
+// stays open after this, so checkingIn stays set and a tap can't re-arm.
 async function landed(members, wasIn) {
-  const me = user;
-  const names = members.map(m => m.name);
   // the collision plays while the board refreshes underneath it; two heavy
   // hits land with the faces
-  collide({ me, them: members, reduced: REDUCED.matches, shake: root, onImpact: () => buzz([90, 70, 160]) });
+  smash(members);
   root.classList.remove('here--waiting', 'here--armed');
   root.classList.add('here--checked-in');
   if (!wasIn) $('#here-checkin-btn').hidden = true;
-  const who = names.length ? ` with ${names.join(', ')}` : '';
+  const who = and(members.map(m => m.name));
   let mine = 0;
   try {
     ({ mine } = await renderBoard());
   } catch (e) {
-    checkingIn = false;
-    return say(e.message);
+    say(e.message);
+    return 0;
   }
-  // checkingIn stays set until here, so a tap during the refresh can't re-arm
-  checkingIn = false;
-  if (user !== me) return;
   if (wasIn) {
-    say(`Bumped${who}. They're in.`);
+    say(`Bumped with ${who}. They're in. More can shake in now.`);
     burst(false);
-    root.classList.add('here--armed');
-    return listen();
+    return mine;
   }
-  say(`Bumped${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}.`);
+  say(`Bumped with ${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}. More can shake in now.`);
   burst([1, 5, 10, 25, 50, 100].includes(mine));
   show('#here-welcome', mine === 1);
+  return mine;
+}
+
+// Someone else shook in while the group was open.
+function joined(fresh, everyone) {
+  smash(fresh);
+  burst(false);
+  say(`${and(fresh.map(m => m.name))} joined. Bumped with ${and(everyone.map(m => m.name))}.`);
+  renderBoard().catch(() => {});
+}
+
+// The group closed: one line for all of it. Someone who was already in goes
+// back to bumping more in.
+function finish(wasIn, everyone, mine) {
+  checkingIn = false;
+  const who = and(everyone.map(m => m.name));
+  const n = everyone.length + 1;
+  const all = n > 2 ? ` All ${n} of you are in.` : '';
+  say(wasIn || !mine
+    ? `Bumped with ${who}. ${n > 2 ? `All ${n} of you are in.` : "They're in."}`
+    : `Bumped with ${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}.${all}`);
+  if (wasIn) {
+    root.classList.add('here--armed');
+    listen();
+  }
 }
 
 function tapInstead(msg) {
@@ -268,6 +414,12 @@ function tapInstead(msg) {
   btn.textContent = 'Tap to bump';
   btn.disabled = false;
 }
+
+// What this phone has learned about how its owner shakes (see shakeCounter),
+// kept so the second meetup starts where the first left off.
+const SHAKE = 'squad-shake';
+const shakeProfile = (() => { try { return readShakeProfile(localStorage.getItem(SHAKE)); } catch { return readShakeProfile(null); } })();
+const saveShake = () => { try { localStorage.setItem(SHAKE, JSON.stringify(shakeProfile)); } catch {} };
 
 // Listen for three shakes, then bump.
 function listen() {
@@ -278,22 +430,31 @@ function listen() {
     btn.disabled = false;
     return;
   }
-  btn.textContent = 'Shake!';
-  btn.disabled = true;
+  // the button stays live: a tap bumps too, for shakes that don't register
+  btn.textContent = 'Shake! (or tap)';
+  btn.disabled = false;
   const pips = [...root.querySelectorAll('.here__pips i')];
-  const step = shakeCounter();
+  // nothing typed should be left in focus while the phone shakes
+  document.activeElement?.blur?.();
+  const step = shakeCounter({ profile: shakeProfile });
   let heard = false;
   const onMotion = e => {
+    const accel = reading(e);
+    // readings with no numbers don't count as the phone sending motion
+    if (!accel) return;
     heard = true;
-    const n = step(e.timeStamp, e.accelerationIncludingGravity);
+    const n = step(e.timeStamp, accel);
     if (!n) return;
     buzz(25);
     rep(n);
     pips.forEach((p, i) => p.classList.toggle('on', i < n));
-    if (n >= SHAKES) bump();
+    if (n >= SHAKES) {
+      saveShake();
+      bump();
+    }
   };
   addEventListener('devicemotion', onMotion);
-  // sensors blocked in site settings never send an event: hand the tap back
+  // sensors blocked in site settings never send a usable reading: say so
   const silent = setTimeout(() => {
     if (heard || checkingIn) return;
     root.classList.remove('here--motion');
@@ -302,6 +463,8 @@ function listen() {
   disarm = () => {
     removeEventListener('devicemotion', onMotion);
     clearTimeout(silent);
+    // near misses and jitter are learned too, not only finished shakes
+    saveShake();
   };
 }
 
@@ -329,6 +492,7 @@ async function arm() {
 
 async function render(member) {
   user = member || null;
+  if (user) stopCollecting();
   // lets the homepage leaderboard mark your row
   try { user ? localStorage.setItem('squad-me', JSON.stringify(user.login)) : localStorage.removeItem('squad-me'); } catch {}
   disarm();
@@ -340,6 +504,7 @@ async function render(member) {
   btn.innerHTML = 'Friendship&shy;mog';
   root.querySelectorAll('.here__pips i').forEach(p => p.classList.remove('on'));
   show('#here-welcome', false);
+  show('#here-code', false);
   show('#here-signin', !user);
   show('#here-app', !!user);
   $('#here-title').textContent = user ? 'Check in' : 'Log in';
@@ -370,6 +535,11 @@ async function render(member) {
 }
 
 $('#here-join').onsubmit = join;
+$('#here-claim').onsubmit = claim;
+$('#here-code-btn').onclick = showCode;
+// the same server the page talks to, so a local site signs in locally
+$('#here-github').href = `${API}/api/auth/github`;
+$('#here-github').onclick = githubFromApp;
 $('#here-signout').onclick = async () => {
   await api('/api/signout', {}).catch(() => {});
   store.set(null);
@@ -411,14 +581,23 @@ if (handed) {
 say('Waking the check-in server…');
 api('/api/config').then(({ github }) => {
   show('#here-github', github);
-  if (!store.get()) return render(null);
-  return api('/api/me').then(({ member }) => render(member));
+  if (!store.get()) {
+    try {
+      const p = JSON.parse(localStorage.getItem(PENDING));
+      if (p?.nonce && Date.now() < p.until) startCollecting(p);
+    } catch {}
+    return render(null);
+  }
+  return api('/api/me').then(({ member }) => render(member)).then(() => {
+    let welcome = null;
+    try { welcome = sessionStorage.getItem(WELCOME); sessionStorage.removeItem(WELCOME); } catch {}
+    if (welcome) say(`${welcome} ${$('#here-status').textContent}`);
+  });
 }).catch(e => say(e.message));
 
 // Install as an app. Chrome and Android hand over a prompt to show on a tap;
 // iPhone has none, so it gets the two taps written out. Hidden once installed.
-const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-if (!installed) {
+if (!standalone) {
   let prompt;
   addEventListener('beforeinstallprompt', e => {
     e.preventDefault();
