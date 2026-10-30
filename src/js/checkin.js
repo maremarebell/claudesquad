@@ -24,6 +24,17 @@ export function tally(rows, eventDates, today) {
   return { meetups, present };
 }
 
+// The meetup on a date, and the first one after it, from events.json.
+export const meetupOn = (events, date) => events.find(e => e.date === date);
+export const nextMeetup = (events, date) =>
+  events.filter(e => e.date > date).sort((a, b) => a.date.localeCompare(b.date))[0];
+
+// How hard one motion sample is, in m/s² away from gravity, or null when the
+// reading has no numbers in it (a phone's sensors waking up, or some Android
+// sensors that send the object with null axes).
+export const joltOf = a =>
+  a && [a.x, a.y, a.z].every(Number.isFinite) ? Math.hypot(a.x, a.y, a.z) - 9.81 : null;
+
 // The timing of a friendshipmog, shared with the motion debug readout.
 export const SHAKE = { need: SHAKES, within: 1000, gap: 150 };
 
@@ -61,9 +72,8 @@ export function shakeCounter({ need = SHAKE.need, within = SHAKE.within, gap = S
     return true;
   };
   return (t, accel) => {
-    // a phone can send readings with no numbers in them (sensors waking up)
-    if (!accel || ![accel.x, accel.y, accel.z].every(Number.isFinite)) return 0;
-    const dev = Math.hypot(accel.x, accel.y, accel.z) - 9.81;
+    const dev = joltOf(accel);
+    if (dev == null) return 0;
     if (same(hits, t, dev)) return 0;
     const bar = shakeBar(profile, limits);
     if (dev >= bar) {

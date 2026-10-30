@@ -7,9 +7,8 @@ function formatDate(dateStr) {
 }
 
 // The soonest event on or after today, for the homepage hero. Picked at build
-// time, so the site needs a rebuild after each meetup to move on to the next.
-module.exports = function() {
-  const today = new Date();
+// time; the homepage re-picks in the browser, since the build can be days old.
+function pickNext(events, today) {
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const upcoming = events
@@ -19,4 +18,7 @@ module.exports = function() {
   if (!upcoming.length) return null;
 
   return { ...upcoming[0], dateLabel: formatDate(upcoming[0].date) };
-};
+}
+
+module.exports = () => pickNext(events, new Date());
+Object.assign(module.exports, { pickNext, formatDate });

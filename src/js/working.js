@@ -1,6 +1,7 @@
 // "What are you working on": a line and an optional link, posted by members,
 // shown to everyone on the Projects page, newest first.
 import { api, token, SignedOut, avatar, el } from './squad.js';
+import { ago, linkLabel } from './format.js';
 
 const root = document.getElementById('working');
 const form = root.querySelector('form');
@@ -8,21 +9,13 @@ const feed = root.querySelector('.working__feed');
 const status = root.querySelector('.working__status');
 let me = null;
 
-const ago = iso => {
-  const s = (Date.now() - Date.parse(iso)) / 1000;
-  if (s < 90) return 'just now';
-  if (s < 5400) return `${Math.round(s / 60)}m ago`;
-  if (s < 129600) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
-};
-
 function card(post) {
   const li = el('li', { className: 'working__post' },
     avatar(post.member, 'working__face'),
     el('div', { className: 'working__body' },
       el('p', { className: 'working__meta' }, el('b', { textContent: post.member.name }), ` · ${ago(post.created_at)}`),
       el('p', { className: 'working__text', textContent: post.body }),
-      ...(post.link ? [el('a', { className: 'working__link', href: post.link, target: '_blank', rel: 'noopener nofollow', textContent: new URL(post.link).host + new URL(post.link).pathname.replace(/\/$/, '') })] : [])));
+      ...(post.link ? [el('a', { className: 'working__link', href: post.link, target: '_blank', rel: 'noopener nofollow', textContent: linkLabel(post.link) })] : [])));
   if (me && post.member.id === me.id) {
     li.append(el('button', {
       className: 'working__delete', type: 'button', textContent: 'Delete',

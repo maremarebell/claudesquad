@@ -34,7 +34,7 @@ Render deploys the static site on every push to the branch it builds.
 ### Testing locally
 
 ```
-npm test                                   # unit tests, no network
+npm test                                   # unit tests, no network (CI runs them on every push and PR)
 docker run -d --rm --name sq-pg -e POSTGRES_PASSWORD=local -p 55432:5432 postgres:16-alpine
 (cd server && npm ci) && node server/e2e.mjs   # join, bumps, matching, CORS, sign-out
 ```

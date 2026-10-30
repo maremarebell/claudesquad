@@ -1,6 +1,7 @@
 // The homepage leaderboard: everyone's points, live. Public, no sign-in.
 import { leaderboard } from './checkin.js';
-import { api, mergedPRs, plural, countTo, avatar, el, REDUCED } from './squad.js';
+import { api, mergedPRs, countTo, avatar, el, REDUCED } from './squad.js';
+import { plural } from './format.js';
 
 const root = document.getElementById('board');
 const cfg = JSON.parse(document.getElementById('board-config').textContent);

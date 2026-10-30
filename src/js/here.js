@@ -2,16 +2,17 @@
 // once it's set up), then on a meetup day shake your phone at the same time
 // as someone next to you, like Bump. The pig does a rep per shake;
 // the third sends a bump, and two bumps close in time and place check both in.
-import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard } from './checkin.js';
+import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard, meetupOn, nextMeetup } from './checkin.js';
+import { plural, githubLogin, profileLink } from './format.js';
 import { PIG } from './pig.js';
 import { collide } from './collide.js';
-import { API, api as call, token as store, SignedOut, mergedPRs, plural, countTo, avatar, REDUCED } from './squad.js';
+import { API, api as call, token as store, SignedOut, mergedPRs, countTo, avatar, REDUCED } from './squad.js';
 
 const root = document.getElementById('here');
 const cfg = JSON.parse(document.getElementById('here-config').textContent);
 const eventDates = new Set(cfg.events.map(e => e.date));
-const eventOn = date => cfg.events.find(e => e.date === date);
-const nextAfter = date => cfg.events.filter(e => e.date > date).sort((a, b) => a.date.localeCompare(b.date))[0];
+const eventOn = date => meetupOn(cfg.events, date);
+const nextAfter = date => nextMeetup(cfg.events, date);
 
 const $ = sel => root.querySelector(sel);
 const show = (sel, on = true) => { $(sel).hidden = !on; };
@@ -82,7 +83,7 @@ async function join(e) {
   try {
     const { token, member } = await api('/api/join', {
       name: form.name.value,
-      github: form.github.value.trim().replace(/^@/, ''),
+      github: githubLogin(form.github.value),
     });
     buzz(30);
     signedIn(token, `Welcome, ${member.name}.`);
@@ -209,10 +210,7 @@ async function renderBoard() {
   show('#here-locked', mine === 0);
   show('#here-unlocked', mine > 0);
   if (mine > 0) {
-    const login = user.login;
-    // JSON strings are valid YAML, so a name with a colon can't break the front matter
-    const template = `---\nname: ${JSON.stringify(user.name || login)}\nrole:\nphoto:\n---\n\n`;
-    const href = `${cfg.repo}/new/${cfg.branch}/src/profiles?filename=${encodeURIComponent(login)}.md&value=${encodeURIComponent(template)}`;
+    const href = profileLink(cfg, user);
     $('#here-profile-link').href = href;
     $('#here-welcome-link').href = href;
   }

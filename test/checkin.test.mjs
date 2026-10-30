@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nyToday, tally, shakeCounter, shakeBar, newShakeProfile, readShakeProfile, countPRs, leaderboard, SHAKES, POINTS } from '../src/js/checkin.js';
+import { nyToday, tally, shakeCounter, shakeBar, newShakeProfile, readShakeProfile, countPRs, leaderboard, SHAKES, POINTS, joltOf, meetupOn, nextMeetup } from '../src/js/checkin.js';
 
 const mare = { id: 'u2', name: 'Mare' };
 const iso = { id: 'u1', name: 'Iso' };
@@ -57,6 +57,44 @@ test('gentle movement and missing sensors do not count', () => {
   assert.equal(step(0, { x: 1, y: 2, z: 9.81 }), 0);
   assert.equal(step(500, null), 0);
   assert.equal(step(800, { x: null, y: null, z: null }), 0);
+});
+
+test('a reading missing one axis (some Android sensors) does not count', () => {
+  assert.equal(shakeCounter()(0, { x: 30, y: null, z: 9.81 }), 0);
+});
+
+test('a jolt is the reading above gravity, null without a reading', () => {
+  assert.equal(joltOf({ x: 0, y: 0, z: 9.81 }), 0);
+  assert.ok(Math.abs(joltOf({ x: 0, y: 0, z: 23.81 }) - 14) < 1e-9);
+  assert.equal(joltOf(null), null);
+  assert.equal(joltOf({ x: 1, y: null, z: 1 }), null);
+  assert.equal(joltOf({ x: NaN, y: 0, z: 0 }), null);
+  assert.equal(joltOf({ x: 0, y: 0, z: 0 }), -9.81);
+});
+
+test('a jolt right at a fresh phone\'s bar counts, just under does not', () => {
+  const bar = shakeBar(newShakeProfile());
+  assert.equal(shakeCounter()(0, { x: 0, y: 0, z: 9.81 + bar - 0.01 }), 0);
+  assert.equal(shakeCounter()(0, { x: 0, y: 0, z: 9.81 + bar }), 1);
+});
+
+test('the counter can be tuned', () => {
+  const step = shakeCounter({ need: 2, start: 5 });
+  const soft = { x: 0, y: 0, z: 9.81 + 6 };
+  assert.equal(step(0, soft), 1);
+  assert.equal(step(200, soft), 2);
+  assert.equal(step(400, soft), 2);
+});
+
+const events = [{ date: '2026-12-03' }, { date: '2026-10-15' }, { date: '2026-10-29' }];
+
+test('a date finds its meetup; the next meetup is the soonest strictly after it', () => {
+  assert.equal(meetupOn(events, '2026-10-29'), events[2]);
+  assert.equal(meetupOn(events, '2026-10-30'), undefined);
+  assert.equal(nextMeetup(events, '2026-10-15').date, '2026-10-29');
+  assert.equal(nextMeetup(events, '2026-10-29').date, '2026-12-03');
+  assert.equal(nextMeetup(events, '2026-12-03'), undefined);
+  assert.deepEqual(events.map(e => e.date), ['2026-12-03', '2026-10-15', '2026-10-29'], 'the list is left as it was');
 });
 
 test('the debounce counts at exactly the gap and caps at SHAKES', () => {
