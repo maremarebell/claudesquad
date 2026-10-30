@@ -490,6 +490,9 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
     if (me) stopCollecting();
     // lets the homepage leaderboard mark your row
     try { me ? localStorage.setItem('squad-me', JSON.stringify(me.login)) : localStorage.removeItem('squad-me'); } catch {}
+    // the nav (outside this component) follows too; site.js sets it on load
+    const nav = document.getElementById('nav-login');
+    if (nav) nav.textContent = me ? 'Check in' : 'Log in';
     disarm.current();
     disarm.current = () => {};
     checkingIn.current = false;

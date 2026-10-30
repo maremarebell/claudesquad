@@ -24,3 +24,10 @@ if (mark && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
 try {
   if (localStorage.getItem('squad-token')) document.getElementById('nav-login').textContent = 'Check in';
 } catch {}
+
+// A form React hasn't taken over yet (its script is still on its way) would
+// submit the old-fashioned way and reload the page with the fields in the
+// URL. Hold it until React is there; the status line says Loading…
+addEventListener('submit', e => {
+  if (!Object.keys(e.target).some(k => k.startsWith('__reactFiber'))) e.preventDefault();
+}, true);

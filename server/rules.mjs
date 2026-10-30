@@ -100,8 +100,10 @@ export const bumpResult = rows => rows.length
   ? { matched: true, members: rows.map(r => ({ id: r.member_id, name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
   : { matched: false };
 
-export const githubAuthorizeUrl = ({ clientId, state, apiUrl }) =>
-  `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&scope=read:user&redirect_uri=${encodeURIComponent(`${apiUrl}/api/auth/github/callback`)}`;
+export const GITHUB = 'https://github.com';
+export const GITHUB_API = 'https://api.github.com';
+export const githubAuthorizeUrl = ({ clientId, state, apiUrl, githubUrl = GITHUB }) =>
+  `${githubUrl}/login/oauth/authorize?client_id=${clientId}&state=${state}&scope=read:user&redirect_uri=${encodeURIComponent(`${apiUrl}/api/auth/github/callback`)}`;
 
 // What a thrown error becomes on the wire: its own status and message, or a
 // plain 500 that doesn't leak internals.
