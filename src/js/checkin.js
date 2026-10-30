@@ -24,6 +24,9 @@ export function tally(rows, eventDates, today) {
   return { meetups, present };
 }
 
+// The timing of a friendshipmog, shared with the motion debug readout.
+export const SHAKE = { need: SHAKES, within: 1000, gap: 150 };
+
 // A friendshipmog is SHAKES jolts inside a second. How hard a jolt has to be
 // adapts to the phone and the person shaking it, in m/s² away from gravity:
 // - the bar starts at `start`, then sits at half the strength of their recent
@@ -46,7 +49,7 @@ export function shakeBar(profile, { min = 5, max = 16, start = 10 } = {}) {
   return Math.min(max, Math.max(floorOf(profile, min), typical));
 }
 
-export function shakeCounter({ need = SHAKES, within = 1000, gap = 150, profile = newShakeProfile(), ...limits } = {}) {
+export function shakeCounter({ need = SHAKE.need, within = SHAKE.within, gap = SHAKE.gap, profile = newShakeProfile(), ...limits } = {}) {
   let hits = [];
   let misses = [];
   const learn = list => { profile.peaks = [...profile.peaks, ...list.map(h => h.peak)].slice(-9); };

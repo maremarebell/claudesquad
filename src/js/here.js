@@ -526,6 +526,27 @@ $('#here-signout').onclick = async () => {
 };
 $('#here-checkin-btn').onclick = arm;
 
+// Motion debug: the readout from motion-debug.js, remembered per phone.
+// iOS only asks for motion inside the tap, so that comes before any await.
+const debugBox = $('#here-debug');
+let debug = null;
+async function setDebug(on) {
+  try { on ? localStorage.setItem('squad-debug', '1') : localStorage.removeItem('squad-debug'); } catch {}
+  debug?.stop();
+  debug = null;
+  if (!on) return;
+  const { motionDebug } = await import('./motion-debug.js');
+  if (debugBox.checked && !debug) debug = motionDebug(root);
+}
+debugBox.onchange = () => {
+  if (debugBox.checked && typeof window.DeviceMotionEvent?.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission().catch(() => {});
+  }
+  setDebug(debugBox.checked);
+};
+try { debugBox.checked = localStorage.getItem('squad-debug') === '1'; } catch {}
+if (debugBox.checked) setDebug(true);
+
 // Coming back from Sign in with GitHub: the server hands the session over in
 // the URL fragment, which never reaches any server log.
 const handed = new URLSearchParams(location.hash.slice(1)).get('token');
