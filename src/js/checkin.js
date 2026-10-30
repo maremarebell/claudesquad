@@ -24,16 +24,26 @@ export function tally(rows, eventDates, today) {
   return { meetups, present };
 }
 
+// The meetup on a date, and the first one after it, from events.json.
+export const meetupOn = (events, date) => events.find(e => e.date === date);
+export const nextMeetup = (events, date) =>
+  events.filter(e => e.date > date).sort((a, b) => a.date.localeCompare(b.date))[0];
+
 // A friendshipmog is SHAKES hard jolts inside a second. One jolt spans several
 // motion samples, so a sample within `gap` ms of the last counted jolt is the
 // same jolt. `threshold` is m/s² above gravity.
 export const SHAKE = { need: SHAKES, within: 1000, gap: 150, threshold: 14 };
 
+// How hard one motion sample is, in m/s² above gravity, or null when the
+// sensor sent no reading (some Android phones send the object with null axes).
+export const joltOf = a =>
+  a && a.x != null && a.y != null && a.z != null ? Math.hypot(a.x, a.y, a.z) - 9.81 : null;
+
 export function shakeCounter(opts = {}) {
   const { need, within, gap, threshold } = { ...SHAKE, ...opts };
   let hits = [];
   return (t, accel) => {
-    if (!accel || Math.hypot(accel.x, accel.y, accel.z) - 9.81 < threshold) return 0;
+    if (!(joltOf(accel) >= threshold)) return 0;
     if (t - (hits[hits.length - 1] ?? -Infinity) < gap) return 0;
     hits = hits.filter(h => t - h < within).concat(t);
     return Math.min(hits.length, need);

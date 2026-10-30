@@ -23,9 +23,9 @@ function quarterKey(year, monthIndex) {
 // Shows one 3-month block per quarter that actually has an event in it:
 // it does NOT auto-advance with today's date. The next quarter only
 // appears once an event is added to it. Falls back to the current
-// quarter if events.json has nothing in it yet.
-module.exports = function() {
-  const today = new Date();
+// quarter if events.json has nothing in it yet. `today` is the build
+// machine's local date.
+function buildMonths(events, today) {
   const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
   const todayStr = `${todayUTC.getUTCFullYear()}-${pad(todayUTC.getUTCMonth() + 1)}-${pad(todayUTC.getUTCDate())}`;
 
@@ -82,4 +82,7 @@ module.exports = function() {
   });
 
   return months;
-};
+}
+
+module.exports = () => buildMonths(events, new Date());
+module.exports.buildMonths = buildMonths;

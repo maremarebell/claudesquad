@@ -18,29 +18,27 @@
 // 250 metres of each other are both checked in for today (New York date).
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import pg from 'pg';
+import {
+  LIVE_SITE, Oops, hash, allowedOrigins, connectionFor, readJSON as body, bearer, stateFromCookie,
+  avatarFor, parseDates, cleanJoin, takenMessage, cleanPost, cleanBump, bumpResult, githubAuthorizeUrl, errorReply,
+} from './rules.mjs';
 
 const {
   DATABASE_URL, PORT = 10000,
-  SITE_URL = 'https://claudesquad.onrender.com',
+  SITE_URL = LIVE_SITE,
   GITHUB_CLIENT_ID, GITHUB_SECRET,
 } = process.env;
 const API_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
-// SITE_URL may carry a path or trailing slash; the live site is always allowed.
-const ORIGINS = new Set([new URL(SITE_URL).origin, 'https://claudesquad.onrender.com', 'http://localhost:8080', 'http://127.0.0.1:8080']);
+const ORIGINS = allowedOrigins(SITE_URL);
 const github = Boolean(GITHUB_CLIENT_ID && GITHUB_SECRET);
 
 // Everything lives in its own schema, so the database can be shared with
 // another project without any table of ours touching theirs.
 const SCHEMA = process.env.DB_SCHEMA || 'claudesquad';
-// Neon's pooled host ("-pooler") rejects the search_path startup option, so
-// connect to the direct host instead; the server only opens a handful.
-const connection = {
-  connectionString: DATABASE_URL?.replace('-pooler.', '.'),
-  ssl: /localhost|127\.0\.0\.1/.test(DATABASE_URL || '') || !/\./.test(new URL(DATABASE_URL || 'postgres://x').hostname)
-    ? false : { rejectUnauthorized: false },
-};
+// the direct host, not Neon's pooler; the server only opens a handful
+const connection = connectionFor(DATABASE_URL);
 const db = new pg.Pool({ ...connection, options: `-c search_path=${SCHEMA}` });
 
 // The port opens first and the database is set up after, retrying, so a
@@ -67,23 +65,6 @@ async function setUp() {
   }
 }
 
-const hash = token => createHash('sha256').update(token).digest('hex');
-const LOGIN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-class Oops extends Error {
-  constructor(status, message) { super(message); this.status = status; }
-}
-
-async function body(req) {
-  let raw = '';
-  for await (const chunk of req) {
-    raw += chunk;
-    if (raw.length > 10_000) throw new Oops(413, 'too much');
-  }
-  try { return JSON.parse(raw || '{}'); } catch { throw new Oops(400, 'bad JSON'); }
-}
-
 async function signIn(memberId) {
   const token = randomBytes(32).toString('base64url');
   await db.query('insert into sessions (token_hash, member_id) values ($1, $2)', [hash(token), memberId]);
@@ -91,7 +72,7 @@ async function signIn(memberId) {
 }
 
 async function whoami(req) {
-  const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+  const token = bearer(req.headers.authorization);
   if (!token) throw new Oops(401, 'sign in first');
   const { rows } = await db.query(
     `select m.id, m.login, m.name, m.avatar_url, m.verified from sessions s join members m on m.id = s.member_id
@@ -100,22 +81,14 @@ async function whoami(req) {
   return rows[0];
 }
 
-const avatarFor = login => `https://github.com/${login}.png?size=96`;
-
 const routes = {
   'GET /api/config': async () => ({ github }),
 
   'POST /api/join': async req => {
-    const { name, github: login } = await body(req);
-    const clean = String(name || '').trim().slice(0, 40);
-    if (!clean) throw new Oops(400, 'Add your name.');
-    if (!LOGIN.test(login || '')) throw new Oops(400, "That doesn't look like a GitHub username.");
-    // A login someone already holds can only be reclaimed through GitHub sign-in,
-    // so typing a friend's username doesn't take over their points.
+    const { name: clean, login } = cleanJoin(await body(req));
+    // typing a friend's username doesn't take over their points
     const taken = await db.query('select id, verified from members where lower(login) = lower($1)', [login]);
-    if (taken.rows[0]) throw new Oops(409, github
-      ? 'That GitHub username is already in the squad. Use Sign in with GitHub to get back in.'
-      : 'That GitHub username is already in the squad on another phone. Use that phone, or ask a captain.');
+    if (taken.rows[0]) throw new Oops(409, takenMessage(github));
     const { rows } = await db.query(
       'insert into members (login, name, avatar_url) values ($1, $2, $3) returning id, login, name, avatar_url, verified',
       [login, clean, avatarFor(login)]);
@@ -127,13 +100,13 @@ const routes = {
     const state = randomBytes(16).toString('hex');
     res.writeHead(302, {
       'Set-Cookie': `gh_state=${state}; Path=/api/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-      Location: `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&state=${state}&scope=read:user&redirect_uri=${encodeURIComponent(`${API_URL}/api/auth/github/callback`)}`,
+      Location: githubAuthorizeUrl({ clientId: GITHUB_CLIENT_ID, state, apiUrl: API_URL }),
     });
     res.end();
   },
 
   'GET /api/auth/github/callback': async (req, res, url) => {
-    const state = (req.headers.cookie || '').match(/gh_state=([a-f0-9]+)/)?.[1];
+    const state = stateFromCookie(req.headers.cookie);
     if (!state || state !== url.searchParams.get('state')) throw new Oops(400, 'Sign-in expired, try again.');
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
@@ -166,15 +139,14 @@ const routes = {
   },
 
   'POST /api/signout': async req => {
-    const token = (req.headers.authorization || '').replace(/^Bearer /, '');
-    await db.query('delete from sessions where token_hash = $1', [hash(token)]);
+    await db.query('delete from sessions where token_hash = $1', [hash(bearer(req.headers.authorization))]);
     return {};
   },
 
   // Public: names and GitHub avatars are already public on the site, and this
   // only counts check-ins on the dates the site asks about (its meetups).
   'GET /api/leaderboard': async (_req, _res, url) => {
-    const dates = (url.searchParams.get('dates') || '').split(',').filter(d => DATE.test(d)).slice(0, 400);
+    const dates = parseDates(url.searchParams.get('dates'));
     const { rows } = await db.query(
       `select m.id, m.login, m.name, m.avatar_url,
               count(c.event_date) filter (where c.event_date = any($1::date[]))::int as meetups
@@ -194,18 +166,14 @@ const routes = {
 
   'POST /api/posts': async req => {
     const me = await whoami(req);
-    const { body: text, link } = await body(req);
-    const clean = String(text || '').trim().slice(0, 280);
-    if (!clean) throw new Oops(400, 'Say what you\'re working on.');
-    const url = String(link || '').trim();
-    if (url && !/^https?:\/\/\S+$/.test(url)) throw new Oops(400, 'Links start with https://');
+    const post = cleanPost(await body(req));
     // a minute between posts, so nobody floods the page
     const recent = await db.query(
       "select 1 from posts where member_id = $1 and created_at > now() - interval '1 minute'", [me.id]);
     if (recent.rows[0]) throw new Oops(429, 'Give it a minute before posting again.');
     const { rows } = await db.query(
       'insert into posts (member_id, body, link) values ($1, $2, $3) returning id, body, link, created_at',
-      [me.id, clean, url || null]);
+      [me.id, post.body, post.link]);
     return { ...rows[0], member: { id: me.id, login: me.login, name: me.name, avatar_url: me.avatar_url } };
   },
 
@@ -218,7 +186,7 @@ const routes = {
 
   'GET /api/board': async (req, _res, url) => {
     await whoami(req);
-    const dates = (url.searchParams.get('dates') || '').split(',').filter(d => DATE.test(d)).slice(0, 400);
+    const dates = parseDates(url.searchParams.get('dates'));
     const { rows } = await db.query(
       `select to_char(c.event_date, 'YYYY-MM-DD') as event_date,
               json_build_object('id', m.id, 'login', m.login, 'name', m.name, 'avatar_url', m.avatar_url) as members
@@ -229,10 +197,7 @@ const routes = {
 
   'POST /api/bump': async req => {
     const me = await whoami(req);
-    const { lat, lng } = await body(req);
-    if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      throw new Oops(400, 'A location is needed to bump.');
-    }
+    const { lat, lng } = cleanBump(await body(req));
     const client = await db.connect();
     try {
       await client.query('begin');
@@ -252,10 +217,7 @@ const routes = {
            on conflict do nothing`, [[me.id, ...rows.map(r => r.member_id)]]);
       }
       await client.query('commit');
-      // names and faces, for the collision on the phone
-      return rows.length
-        ? { matched: true, members: rows.map(r => ({ name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
-        : { matched: false };
+      return bumpResult(rows);
     } catch (e) {
       await client.query('rollback');
       throw e;
@@ -292,11 +254,11 @@ http.createServer(async (req, res) => {
       res.end(JSON.stringify(out));
     }
   } catch (e) {
-    const status = e.status || 500;
+    const { status, body: reply } = errorReply(e);
     if (status === 500) console.error(e);
     if (!res.headersSent) {
       res.writeHead(status, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: status === 500 ? 'Something broke on the server.' : e.message }));
+      res.end(JSON.stringify(reply));
     }
   }
 }).listen(PORT, () => {

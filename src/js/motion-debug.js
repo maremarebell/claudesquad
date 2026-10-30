@@ -1,13 +1,37 @@
 // Motion debug: a readout pinned top left showing what the motion sensor
 // sends, measured the way shakeCounter measures a jolt. Switched on from
 // /here/ and listening on its own, so it works on any day, armed or not.
-import { SHAKE, shakeCounter } from './checkin.js';
+import { SHAKE, shakeCounter, joltOf } from './checkin.js';
 
 const G = 9.81;
 const SPAN = 3000; // ms of history in the graph
 const W = 200, H = 56;
 
 const fmt = n => (n == null ? '—' : n.toFixed(1)).padStart(6);
+
+// What the real check-in counter on /here/ is doing, from the page's classes.
+export const counterState = classes =>
+  classes.contains('here--waiting') ? 'bumping'
+    : !classes.contains('here--armed') ? 'not armed'
+    : classes.contains('here--motion') ? 'listening' : 'tap only';
+
+// The readout's text. samples ({ t, jolt }) and hits (timestamps of counted
+// jolts) hold the last SPAN ms; events counts every motion event, missing the
+// ones without a reading.
+export function readout({ samples, hits, events, missing, max, interval, accel, counter }, now) {
+  const peak = samples.reduce((p, s) => Math.max(p, s.jolt), -G);
+  const inSecond = hits.filter(t => now - t < SHAKE.within).length;
+  const rate = samples.filter(s => now - s.t < 1000).length;
+  return [
+    events ? `events ${events}  ${rate} Hz${interval ? ` (${Math.round(interval)} ms)` : ''}` : 'no motion events yet',
+    missing ? `no accel data: ${missing}` : null,
+    `x${fmt(accel?.x)} y${fmt(accel?.y)} z${fmt(accel?.z)}`,
+    `jolt ${fmt(samples.at(-1)?.jolt)}  need ${SHAKE.threshold}`,
+    `peak ${fmt(samples.length ? peak : null)}  max ${fmt(events - missing ? max : null)}`,
+    `jolts ${Math.min(inSecond, SHAKE.need)}/${SHAKE.need} in 1s`,
+    `counter: ${counter}`,
+  ].filter(Boolean).join('\n');
+}
 
 export function motionDebug(root) {
   const box = document.createElement('div');
@@ -34,15 +58,13 @@ export function motionDebug(root) {
     events++;
     interval = e.interval;
     const a = e.accelerationIncludingGravity;
-    // some Android sensors send the object with null axes, which never
-    // reaches the threshold
-    if (!a || a.x == null || a.y == null || a.z == null) {
+    const jolt = joltOf(a);
+    if (jolt == null) {
       missing++;
       accel = null;
       return;
     }
     accel = a;
-    const jolt = Math.hypot(a.x, a.y, a.z) - G;
     max = Math.max(max, jolt);
     samples.push({ t: e.timeStamp, jolt });
     if (step(e.timeStamp, a)) hits.push(e.timeStamp);
@@ -55,22 +77,9 @@ export function motionDebug(root) {
     const now = performance.now();
     while (samples.length && now - samples[0].t > SPAN) samples.shift();
     while (hits.length && now - hits[0] > SPAN) hits.shift();
-    const peak = samples.reduce((p, s) => Math.max(p, s.jolt), -G);
-    const inSecond = hits.filter(t => now - t < SHAKE.within).length;
-    const rate = samples.filter(s => now - s.t < 1000).length;
-    const counter = root.classList.contains('here--waiting') ? 'bumping'
-      : !root.classList.contains('here--armed') ? 'not armed'
-      : root.classList.contains('here--motion') ? 'listening' : 'tap only';
-
-    text.textContent = [
-      events ? `events ${events}  ${rate} Hz${interval ? ` (${Math.round(interval)} ms)` : ''}` : 'no motion events yet',
-      missing ? `no accel data: ${missing}` : null,
-      `x${fmt(accel?.x)} y${fmt(accel?.y)} z${fmt(accel?.z)}`,
-      `jolt ${fmt(samples.at(-1)?.jolt)}  need ${SHAKE.threshold}`,
-      `peak ${fmt(samples.length ? peak : null)}  max ${fmt(events - missing ? max : null)}`,
-      `jolts ${Math.min(inSecond, SHAKE.need)}/${SHAKE.need} in 1s`,
-      `counter: ${counter}`,
-    ].filter(Boolean).join('\n');
+    text.textContent = readout({
+      samples, hits, events, missing, max, interval, accel, counter: counterState(root.classList),
+    }, now);
 
     // |a| − g over the last few seconds; the dashed line is the threshold,
     // ticks mark counted jolts

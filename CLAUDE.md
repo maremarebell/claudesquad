@@ -8,15 +8,18 @@ Static site for Claude Squad (NYC fitness + computing crew). Eleventy (11ty) v2,
 npm install
 npm run dev     # eleventy --serve (live reload)
 npm run build   # outputs to _site/
+npm test        # unit tests (node --test, no dependencies); CI runs them + a build on every push/PR (.github/workflows/test.yml)
 ```
+
+Tests live in `test/`. Logic is kept out of DOM/network code so it can be tested: pure rules go in `src/js/checkin.js` (check-in), `src/js/format.js` (text) and `server/rules.mjs` (validation, CORS, connection); 11ty data files export their builder (`buildMonths`, `pickNext`, `reposFrom`) beside the default. `test/data.test.cjs` also validates `events.json` and the profile/project/gallery front matter, and `test/pig.test.mjs` fails if the three pig bitmap copies drift.
 
 ## Structure
 
 - `src/index.njk` — homepage: 3D hero (`src/js/hero.js`, raw three.js from an importmap) with the next meetup overlaid, intro copy, photo gallery (sorted by date, newest first). Without WebGL the flat `logo.jpg` shows instead.
 - `src/here.njk` + `src/js/here.js` — `/here/`, login + check-in against the check-in server (`site.apiUrl`). Join = name + GitHub username, session token in localStorage; Sign in with GitHub appears when the server has GitHub OAuth env vars. Check-in is a Bump: on a meetup day a pixel pig (SVG, same bitmap as the hero) waits; tap arms motion and location, 3 shakes POST `/api/bump`, and two bumps within 20s and 250m check both people in (server-side, the only way a check-in row is written). Someone already in can bump a newcomer in. Tap works instead of shaking when motion is denied or silent. A Motion debug checkbox under the button (remembered in `localStorage['squad-debug']`) pins `src/js/motion-debug.js` top left: raw axes, jolt vs the `SHAKE` threshold from `checkin.js`, event rate, counted jolts and a 3s graph, listening on its own so it works on any day. First check-in shows an "Add yourself on GitHub" card. Points (also on the homepage leaderboard): 1 per check-in on an `events.json` date + 1 per merged PR to this repo or a Projects repo (`src/_data/prRepos.js`), counted in the browser from GitHub's public search (10-minute cache) and matched to members by GitHub login; the rules are `POINTS`/`countPRs`/`leaderboard` in `checkin.js`.
-- `server/` — the check-in server: plain Node `http` + `pg`, schema in `server/schema.sql` (applied on every start, create-if-missing). Routes are listed at the top of `server/index.mjs`. `server/e2e.mjs` tests it against a local Postgres in Docker.
+- `server/` — the check-in server: plain Node `http` + `pg`, schema in `server/schema.sql` (applied on every start, create-if-missing). Routes are listed at the top of `server/index.mjs`; their input rules are in `server/rules.mjs` (`test/server-rules.test.mjs`). `server/e2e.mjs` tests it against a local Postgres in Docker.
 - `src/js/hero.js` lifecycle (reduced motion, background tabs, lost WebGL context falling back to the flat logo, ring framing at phone and desktop widths) is covered by `test/hero.test.cjs`, which runs the file against stubs, no GPU.
-- `src/js/checkin.js` — the pure rules (New York date, tally, shake counter), tested by `npm test` (`node --test`, no dependencies).
+- `src/js/checkin.js` — the pure rules (New York date, tally, meetup lookup, jolt and shake counter, `SHAKE` tuning), tested by `npm test` (`node --test`, no dependencies). `squad.js` (API client retries, sign-out, PR cache) and `src/sw.js` are tested against stubs in `test/squad.test.mjs` and `test/sw.test.cjs`.
 - `src/manifest.webmanifest` + `src/sw.js` — PWA, starts at `/here/`. The worker is network-first and same-origin only.
 - `src/calendar.njk` — calendar page, entirely data-driven (see below)
 - `src/js/pig3d.js` — the 3D check-in pig (voxels from `src/js/pig.js`): idle breathing and turn, hop per shake, spin + voxel confetti on a match, lies down asleep on non-meetup days, drag to turn. Loaded lazily by `here.js`; the SVG pig stays where WebGL fails or motion is reduced. Sections swing up in 3D as they enter; the footer slab is extruded with text-shadows and tilts to the pointer or phone tilt.
