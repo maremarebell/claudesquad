@@ -966,6 +966,11 @@ h2 {
   cursor: grabbing;
 }
 
+/* the stage the renderer fills: as wide as the column, 62% as tall */
+.here__pig3d-box {
+  aspect-ratio: 100 / 62;
+}
+
 .here--3d #here-pig {
   display: none;
 }
@@ -1357,8 +1362,8 @@ h2 {
   pointer-events: none;
 }
 
-#here-unlocked p + p {
-  margin-top: var(--space-xs);
+.here__links {
+  margin-top: var(--space-sm);
   font-family: var(--mono);
   font-size: var(--text-xs);
   text-transform: uppercase;
