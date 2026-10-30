@@ -1,12 +1,13 @@
 // What every page that talks to the check-in server shares: the session token
-// on this phone, calls to the server, merged-PR counts from GitHub, and a
-// few display helpers.
+// on this phone, calls to the server, merged-PR counts from GitHub, and the
+// DOM helpers the collision (collide.js) draws with.
 import { countPRs } from './checkin.js';
 
 // On a laptop running the site locally, the server runs locally too
 // (`node server/index.mjs`, port 10124); everywhere else it's site.apiUrl.
-export const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
-  ? 'http://localhost:10124'
+// Empty in the build, which renders the pages and never calls the server.
+export const API = typeof location === 'undefined' ? ''
+  : /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://localhost:10124'
   : document.querySelector('meta[name="squad-api"]').content;
 const TOKEN = 'squad-token';
 
@@ -72,22 +73,8 @@ export async function mergedPRs(repos) {
   return counts;
 }
 
-export const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
-
-// Numbers tick up to their new value instead of jumping.
-export function countTo(el, to) {
-  const from = Number(el.textContent) || 0;
-  if (REDUCED.matches || from === to || document.hidden) return void (el.textContent = to);
-  // frames stop in a background tab: make sure the real number lands anyway
-  setTimeout(() => { el.textContent = to; }, 700);
-  const start = performance.now();
-  const step = now => {
-    const k = Math.min(1, (now - start) / 600);
-    el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
-    if (k < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
+// Reduced motion is the off switch for every animation; still in the build.
+export const REDUCED = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
 export function avatar(member, className = 'here__face') {
   const img = document.createElement('img');

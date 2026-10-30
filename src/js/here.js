@@ -1,27 +1,26 @@
-// Check-in, a React app inside the 11ty page. Join with your name and GitHub
-// username (or Sign in with GitHub once it's set up), then on a meetup day
-// shake your phone at the same time as someone next to you, like Bump. The
-// pig does a rep per shake; the third sends a bump, and bumps close in time
-// and place check everyone in. React, htm and the renderer come from the
-// importmap in here.njk; the 3D pig (pig3d.js, React Three Fiber) loads once
-// someone is signed in, and the flat SVG pig stays where WebGL won't start or
-// motion is reduced.
+// Check-in: the Here component is the whole /here/ panel, rendered by the
+// build (src/pages/here.mjs) and taken over in the browser. Join with your
+// name and GitHub username (or Sign in with GitHub once it's set up), then on
+// a meetup day shake your phone at the same time as someone next to you, like
+// Bump. The pig does a rep per shake; the third sends a bump, and bumps close
+// in time and place check everyone in. React, htm and the renderer come from
+// the importmap on every page (src/_includes/layout.mjs); the 3D pig
+// (pig3d.js, React Three Fiber) loads once someone is signed in, and the flat
+// SVG pig stays where WebGL won't start or motion is reduced.
 //
 // What the screen shows is React state; the bump itself (shake listener,
 // location, the re-sending loop) is plain async code that reads refs, so a
-// loop started by one tap can't be fooled by a render in between.
+// loop started by one tap can't be fooled by a render in between. The first
+// render reads nothing from the browser, so it matches the markup the build
+// made; what this phone knows (debug, WebGL, the session) comes in effects.
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { createRoot } from 'react-dom/client';
-import htm from 'htm';
 import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard, meetupOn, nextMeetup } from './checkin.js';
 import { plural, githubLogin, profileLink } from './format.js';
 import { PIG } from './pig.js';
 import { collide } from './collide.js';
 import { API, api as call, token as store, SignedOut, mergedPRs, REDUCED } from './squad.js';
+import { html, Avatar, useCountTo } from './ui.js';
 
-const html = htm.bind(React.createElement);
-const cfg = JSON.parse(document.getElementById('here-config').textContent);
-const eventDates = new Set(cfg.events.map(e => e.date));
 const Pig3D = React.lazy(() => import('./pig3d.js').then(m => ({ default: m.Pig3D })));
 
 const MOG = 'Friendship­mog';
@@ -49,7 +48,7 @@ function signedIn(token, welcome) {
   location.replace(location.pathname);
 }
 
-const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const isApp = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
 // a GitHub sign-in the home-screen app is waiting to collect
 const PENDING = 'squad-github-nonce';
 // what this phone has learned about how its owner shakes (see shakeCounter)
@@ -91,40 +90,6 @@ function reading(e) {
   return null;
 }
 
-// A number that ticks up to its new value instead of jumping.
-function useCountTo(to) {
-  const [shown, setShown] = useState(to);
-  const from = useRef(to);
-  useEffect(() => {
-    const start = from.current;
-    from.current = to;
-    if (REDUCED.matches || start === to || document.hidden) return void setShown(to);
-    const t0 = performance.now();
-    let frame;
-    const step = now => {
-      const k = Math.min(1, (now - t0) / 600);
-      setShown(Math.round(start + (to - start) * (1 - (1 - k) ** 3)));
-      if (k < 1) frame = requestAnimationFrame(step);
-    };
-    frame = requestAnimationFrame(step);
-    // frames stop in a background tab: make sure the real number lands anyway
-    const settle = setTimeout(() => setShown(to), 700);
-    return () => { cancelAnimationFrame(frame); clearTimeout(settle); };
-  }, [to]);
-  return shown;
-}
-
-// A GitHub picture; the pig stands in when there is none (or a typo'd username).
-function Avatar({ member, className = 'here__face' }) {
-  const [pig, setPig] = useState(false);
-  return html`<img
-    src=${pig ? '/images/pig.svg' : member.avatar_url}
-    alt=${member.name} title=${member.name}
-    className=${pig ? `${className} is-pig` : className}
-    loading="lazy"
-    onError=${() => setPig(true)} />`;
-}
-
 // The logo pig, drawn as SVG cells; the eyelids sit over the two eye holes
 // for blinking, the Zs show when it's asleep.
 function PigSVG() {
@@ -139,8 +104,11 @@ function PigSVG() {
     </svg>`;
 }
 
-function App() {
+export function Here({ repo, branch, apiUrl, prRepos, events }) {
+  const eventDates = new Set(events.map(e => e.date));
   const [github, setGithub] = useState(false);
+  // where Sign in with GitHub goes: the server, which on localhost is the local one
+  const [apiBase, setApiBase] = useState(apiUrl);
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('Loading…');
   // the page's states, also its root classes (the CSS and motion-debug read them)
@@ -152,8 +120,8 @@ function App() {
   const [welcome, setWelcome] = useState(false);
   const [code, setCode] = useState(null);
   const [install, setInstall] = useState({ shown: false, prompt: false, ios: false });
-  const [debug, setDebug] = useState(() => { try { return localStorage.getItem('squad-debug') === '1'; } catch { return false; } });
-  const [gl, setGl] = useState(() => !REDUCED.matches && webglWorks());
+  const [debug, setDebug] = useState(false);
+  const [gl, setGl] = useState(false);
   const [is3d, setIs3d] = useState(false);
   const [hop, setHop] = useState(null);
   const [celebrate, setCelebrate] = useState(null);
@@ -271,7 +239,7 @@ function App() {
     polling.current = setInterval(collect, 2000);
   }
   function githubFromApp(e) {
-    if (!standalone) return;
+    if (!isApp()) return;
     e.preventDefault();
     const nonce = [...crypto.getRandomValues(new Uint8Array(24))].map(b => b.toString(16).padStart(2, '0')).join('');
     const p = { nonce, until: Date.now() + 600000 };
@@ -290,7 +258,7 @@ function App() {
     const [data, members, prs] = await Promise.all([
       api(`/api/board?dates=${[...eventDates, today].join(',')}`),
       api('/api/members'),
-      mergedPRs(cfg.prRepos).catch(() => new Map()),
+      mergedPRs(prRepos).catch(() => new Map()),
     ]);
     const { meetups, present } = tally(data, eventDates, today);
     const rows = leaderboard(members, meetups, prs);
@@ -541,8 +509,8 @@ function App() {
       const { inToday } = await renderBoard();
       if (userRef.current !== me) return;
       const today = nyToday();
-      const event = meetupOn(cfg.events, today);
-      const next = nextMeetup(cfg.events, today);
+      const event = meetupOn(events, today);
+      const next = nextMeetup(events, today);
       // the pig is always out: bumping on a meetup day (already in? bump a
       // newcomer in), asleep on the other days
       setCheckin(true);
@@ -572,6 +540,9 @@ function App() {
   // server, which sleeps when idle and takes a while to wake, is woken as the
   // page opens, so the shake later doesn't wait on it.
   useEffect(() => {
+    setApiBase(API);
+    setGl(!REDUCED.matches && webglWorks());
+    try { setDebug(localStorage.getItem('squad-debug') === '1'); } catch {}
     const handed = new URLSearchParams(location.hash.slice(1)).get('token');
     if (handed) {
       store.set(handed);
@@ -614,7 +585,7 @@ function App() {
   // Install as an app. Chrome and Android hand over a prompt to show on a tap;
   // iPhone has none, so it gets the two taps written out. Hidden once installed.
   useEffect(() => {
-    if (standalone) return;
+    if (isApp()) return;
     const onPrompt = e => {
       e.preventDefault();
       installPrompt.current = e;
@@ -655,8 +626,8 @@ function App() {
   const cls = ['here', is3d && 'here--3d', flags.sleeping && 'here--sleeping', flags.checkedIn && 'here--checked-in',
     flags.armed && 'here--armed', flags.waiting && 'here--waiting', flags.motion && 'here--motion'].filter(Boolean).join(' ');
   const mine = board?.me.meetups ?? 0;
-  const profile = user && mine > 0 ? profileLink(cfg, user) : null;
-  const contribute = `${cfg.repo}/blob/${cfg.branch}/CONTRIBUTING.md`;
+  const profile = user && mine > 0 ? profileLink({ repo, branch }, user) : null;
+  const contribute = `${repo}/blob/${branch}/CONTRIBUTING.md`;
 
   return html`
     <div className=${cls} id="here" ref=${root}>
@@ -666,13 +637,13 @@ function App() {
 
       ${!user && html`
         <div id="here-signin">
-          <a className="here__btn" id="here-github" href=${`${API}/api/auth/github`} hidden=${!github} onClick=${githubFromApp}>Sign in with GitHub</a>
+          <a className="here__btn" id="here-github" href=${`${apiBase}/api/auth/github`} hidden=${!github} onClick=${githubFromApp}>Sign in with GitHub</a>
           <form className="here__join" id="here-join" onSubmit=${join}>
             <label>Your name <input name="name" autoComplete="name" maxLength="40" required /></label>
             <label>GitHub username <input name="github" autoComplete="username" autoCapitalize="none" spellCheck="false" maxLength="39" required /></label>
             <button className="here__btn" type="submit">Join the squad</button>
           </form>
-          <p className="here__links"><a href=${cfg.repo} target="_blank" rel="noopener">GitHub repo</a> · <a href=${contribute} target="_blank" rel="noopener">How to contribute</a></p>
+          <p className="here__links"><a href=${repo} target="_blank" rel="noopener">GitHub repo</a> · <a href=${contribute} target="_blank" rel="noopener">How to contribute</a></p>
           <form className="here__join here__code" id="here-claim" onSubmit=${claim}>
             <label>Already joined on another phone? <input name="code" placeholder="ABCD-EFGH" autoComplete="one-time-code" autoCapitalize="characters" spellCheck="false" maxLength="12" required /></label>
             <button className="here__btn" type="submit">Sign in with a code</button>
@@ -724,7 +695,7 @@ function App() {
           <section>
             <h2>Edit the site</h2>
             <p id="here-profile" hidden=${!profile}><a className="here__btn" id="here-profile-link" href=${profile} target="_blank" rel="noopener">Add your profile</a></p>
-            <p className="here__links"><a href="/projects/">Projects</a> · <a href=${cfg.repo} target="_blank" rel="noopener">GitHub repo</a> · <a href=${contribute} target="_blank" rel="noopener">How to contribute</a></p>
+            <p className="here__links"><a href="/projects/">Projects</a> · <a href=${repo} target="_blank" rel="noopener">GitHub repo</a> · <a href=${contribute} target="_blank" rel="noopener">How to contribute</a></p>
           </section>
         </div>`}
 
@@ -737,5 +708,3 @@ function App() {
       <label className="here__haptic" aria-hidden="true" ref=${haptic}><input type="checkbox" switch="" id="haptic" tabIndex="-1" /></label>
     </div>`;
 }
-
-createRoot(document.getElementById('here-root')).render(html`<${App} />`);

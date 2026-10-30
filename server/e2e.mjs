@@ -51,9 +51,12 @@ await check('joining with a name and GitHub username signs you in', async () => 
   cy = await join('Cy', 'cy-gh');
 });
 
-await check('a GitHub username already in the squad cannot be taken by typing it', async () => {
-  const r = await call('/api/join', { method: 'POST', body: { name: 'Not Ana', github: 'ANA-gh' } });
-  assert.equal(r.status, 409);
+await check('typing a username already in the squad signs in as that member', async () => {
+  const r = await call('/api/join', { method: 'POST', body: { name: 'Ana again', github: 'ANA-gh' } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.member.id, (await call('/api/me', { token: ana.token })).body.member.id);
+  assert.equal(r.body.member.name, 'Ana', 'the name on file stays');
+  assert.equal((await call('/api/me', { token: r.body.token })).body.member.login, 'ana-gh');
 });
 
 await check('bad input is refused with a message', async () => {

@@ -104,10 +104,8 @@ test('joining needs a name (trimmed to 40) and a real-looking GitHub username', 
   assert.doesNotThrow(() => cleanJoin({ name: 'Mare', github: 'a'.repeat(39) }));
 });
 
-test('a taken username points to GitHub sign-in only when it is set up', () => {
-  assert.match(takenMessage(true), /Sign in with GitHub/);
-  assert.doesNotMatch(takenMessage(false), /Sign in with GitHub/);
-  assert.match(takenMessage(false), /Sign in somewhere else/);
+test('a GitHub-verified username points to GitHub sign-in', () => {
+  assert.match(takenMessage(), /Sign in with GitHub/);
 });
 
 test('posts need text (trimmed to 280) and only http(s) links', () => {

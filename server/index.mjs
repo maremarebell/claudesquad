@@ -95,9 +95,14 @@ const routes = {
 
   'POST /api/join': async req => {
     const { name: clean, login } = cleanJoin(await body(req));
-    // typing a friend's username doesn't take over their points
-    const taken = await db.query('select id, verified from members where lower(login) = lower($1)', [login]);
-    if (taken.rows[0]) throw new Oops(409, takenMessage(github));
+    // A username already in the squad signs in as that member, from any phone.
+    // Once GitHub has vouched for a login (Sign in with GitHub), only GitHub
+    // can sign it in again.
+    const known = await db.query('select id, login, name, avatar_url, verified from members where lower(login) = lower($1)', [login]);
+    if (known.rows[0]) {
+      if (known.rows[0].verified && github) throw new Oops(409, takenMessage());
+      return { token: await signIn(known.rows[0].id), member: known.rows[0] };
+    }
     const { rows } = await db.query(
       'insert into members (login, name, avatar_url) values ($1, $2, $3) returning id, login, name, avatar_url, verified',
       [login, clean, avatarFor(login)]);

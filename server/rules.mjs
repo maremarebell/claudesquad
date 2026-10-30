@@ -77,10 +77,8 @@ export function cleanJoin({ name, github: login }) {
   return { name: clean, login };
 }
 
-// A login someone already holds can only be reclaimed through GitHub sign-in.
-export const takenMessage = github => github
-  ? 'That GitHub username is already in the squad. Use Sign in with GitHub, or a code from your other phone.'
-  : 'That GitHub username is already in the squad. On the phone you joined with, tap "Sign in somewhere else" and type the code here.';
+// A login GitHub has vouched for is only signed in through GitHub again.
+export const takenMessage = () => 'That GitHub username signed in with GitHub. Use Sign in with GitHub.';
 
 export function cleanPost({ body, link }) {
   const text = String(body || '').trim().slice(0, 280);

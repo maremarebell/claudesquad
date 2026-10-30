@@ -1,6 +1,6 @@
 # Claude Squad
 
-Static site for Claude Squad: home, calendar, and crew profiles. Built with [Eleventy](https://www.11ty.dev/).
+Static site for Claude Squad: home, calendar, and crew profiles. React 19 pages, no bundler, built to static HTML with [Eleventy](https://www.11ty.dev/).
 
 ## Develop
 
