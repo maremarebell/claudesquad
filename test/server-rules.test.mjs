@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   Oops, hash, allowedOrigins, connectionFor, readJSON, bearer, stateFromCookie, avatarFor, parseDates,
   cleanJoin, takenMessage, cleanPost, cleanBump, bumpResult, githubAuthorizeUrl, errorReply,
+  githubState, appFromState, codeFrom, cleanCode, claimKey, CODE_CHARS,
 } from '../server/rules.mjs';
 
 const oops = (status, message) => err => err instanceof Oops && err.status === status && (!message || err.message === message);
@@ -46,10 +47,39 @@ test('bearer tokens come out of the header, a missing header is empty', () => {
   assert.equal(bearer('abc'), 'abc');
 });
 
-test('the OAuth state is read from among other cookies', () => {
+test('the OAuth state is read from among other cookies, with its app nonce', () => {
   assert.equal(stateFromCookie('a=1; gh_state=deadbeef; b=2'), 'deadbeef');
+  assert.equal(stateFromCookie('gh_state=beef.abc_DEF-123; b=2'), 'beef.abc_DEF-123');
   assert.equal(stateFromCookie('gh_state=NOTHEX'), undefined);
   assert.equal(stateFromCookie(undefined), undefined);
+});
+
+const NONCE = 'n'.repeat(24);
+
+test('the home-screen app\'s nonce rides along in the state, if it looks like one', () => {
+  assert.equal(githubState('beef', NONCE), `beef.${NONCE}`);
+  assert.equal(appFromState(`beef.${NONCE}`), NONCE);
+  assert.equal(githubState('beef', 'short'), 'beef');
+  assert.equal(githubState('beef', 'x'.repeat(20) + '.evil'), 'beef');
+  assert.equal(githubState('beef', null), 'beef');
+  assert.equal(appFromState('beef'), undefined);
+});
+
+test('sign-in codes are XXXX-XXXX from easy-to-read characters', () => {
+  assert.equal(codeFrom([0, 1, 2, 3, 4, 5, 6, 7]), 'ABCD-EFGH');
+  assert.equal(codeFrom([CODE_CHARS.length, 255, 255, 255, 255, 255, 255, 255]).length, 9);
+  for (let i = 0; i < 50; i++) {
+    const code = codeFrom(Array.from({ length: 8 }, () => Math.floor(Math.random() * 256)));
+    assert.match(code, /^[A-HJ-KM-NP-Z2-9]{4}-[A-HJ-KM-NP-Z2-9]{4}$/);
+  }
+});
+
+test('typed codes forgive case, dashes and spaces; app nonces are taken as sent', () => {
+  assert.equal(cleanCode(' abcd-efgh '), 'ABCDEFGH');
+  assert.equal(cleanCode(undefined), '');
+  assert.equal(claimKey('abcd efgh'), 'ABCDEFGH');
+  assert.equal(claimKey(NONCE), NONCE);
+  assert.equal(claimKey('Ab_cd-ef' + 'g'.repeat(20)), 'Ab_cd-ef' + 'g'.repeat(20));
 });
 
 test('avatars come from GitHub at 96px', () => {
@@ -75,6 +105,7 @@ test('joining needs a name (trimmed to 40) and a real-looking GitHub username', 
 test('a taken username points to GitHub sign-in only when it is set up', () => {
   assert.match(takenMessage(true), /Sign in with GitHub/);
   assert.doesNotMatch(takenMessage(false), /Sign in with GitHub/);
+  assert.match(takenMessage(false), /Sign in somewhere else/);
 });
 
 test('posts need text (trimmed to 280) and only http(s) links', () => {
@@ -95,12 +126,12 @@ test('a bump needs a numeric location on the globe', () => {
   }
 });
 
-test('a match returns names and faces sorted by name; no match says so', () => {
+test('a match returns everyone matched, sorted by name; no match says so', () => {
   assert.deepEqual(bumpResult([]), { matched: false });
   assert.deepEqual(bumpResult([
     { member_id: 2, name: 'Zed', avatar_url: 'z' },
     { member_id: 1, name: 'Ann', avatar_url: 'a' },
-  ]), { matched: true, members: [{ name: 'Ann', avatar_url: 'a' }, { name: 'Zed', avatar_url: 'z' }] });
+  ]), { matched: true, members: [{ id: 1, name: 'Ann', avatar_url: 'a' }, { id: 2, name: 'Zed', avatar_url: 'z' }] });
 });
 
 test('GitHub sign-in sends the state and the callback on this server', () => {

@@ -29,27 +29,81 @@ export const meetupOn = (events, date) => events.find(e => e.date === date);
 export const nextMeetup = (events, date) =>
   events.filter(e => e.date > date).sort((a, b) => a.date.localeCompare(b.date))[0];
 
-// A friendshipmog is SHAKES hard jolts inside a second. One jolt spans several
-// motion samples, so a sample within `gap` ms of the last counted jolt is the
-// same jolt. `threshold` is m/s² above gravity.
-export const SHAKE = { need: SHAKES, within: 1000, gap: 150, threshold: 14 };
-
-// How hard one motion sample is, in m/s² above gravity, or null when the
-// sensor sent no reading (some Android phones send the object with null axes).
+// How hard one motion sample is, in m/s² away from gravity, or null when the
+// reading has no numbers in it (a phone's sensors waking up, or some Android
+// sensors that send the object with null axes).
 export const joltOf = a =>
-  a && a.x != null && a.y != null && a.z != null ? Math.hypot(a.x, a.y, a.z) - 9.81 : null;
+  a && [a.x, a.y, a.z].every(Number.isFinite) ? Math.hypot(a.x, a.y, a.z) - 9.81 : null;
 
-export function shakeCounter(opts = {}) {
-  const { need, within, gap, threshold } = { ...SHAKE, ...opts };
+// The timing of a friendshipmog, shared with the motion debug readout.
+export const SHAKE = { need: SHAKES, within: 1000, gap: 150 };
+
+// A friendshipmog is SHAKES jolts inside a second. How hard a jolt has to be
+// adapts to the phone and the person shaking it, in m/s² away from gravity:
+// - the bar starts at `start`, then sits at half the strength of their recent
+//   jolts, so a gentle shaker gets a lower bar and a hard one a higher bar;
+// - it never drops below 3x the phone's resting jitter (`noise`), so a
+//   jittery sensor or a bouncing hand doesn't count as shaking;
+// - SHAKES near misses (at least half the bar) inside a second are someone
+//   trying and not getting there: they're learned as that person's strength,
+//   so the next try counts.
+// One jolt spans several motion samples, so a sample within `gap` ms of the
+// last one counted is the same jolt. `profile` carries what was learned from
+// one shake to the next (here.js keeps it per phone).
+export const newShakeProfile = () => ({ noise: 0.5, peaks: [] });
+
+const floorOf = (profile, min) => Math.max(min, profile.noise * 3);
+
+export function shakeBar(profile, { min = 5, max = 16, start = 10 } = {}) {
+  const sorted = [...profile.peaks].sort((a, b) => a - b);
+  const typical = sorted.length >= SHAKES ? sorted[sorted.length >> 1] / 2 : start;
+  return Math.min(max, Math.max(floorOf(profile, min), typical));
+}
+
+export function shakeCounter({ need = SHAKE.need, within = SHAKE.within, gap = SHAKE.gap, profile = newShakeProfile(), ...limits } = {}) {
   let hits = [];
+  let misses = [];
+  const learn = list => { profile.peaks = [...profile.peaks, ...list.map(h => h.peak)].slice(-9); };
+  // the strongest sample of a jolt is its strength
+  const same = (list, t, dev) => {
+    const last = list[list.length - 1];
+    if (!last || t - last.t >= gap) return false;
+    last.peak = Math.max(last.peak, dev);
+    return true;
+  };
   return (t, accel) => {
-    if (!(joltOf(accel) >= threshold)) return 0;
-    if (t - (hits[hits.length - 1] ?? -Infinity) < gap) return 0;
-    hits = hits.filter(h => t - h < within).concat(t);
-    return Math.min(hits.length, need);
+    const dev = joltOf(accel);
+    if (dev == null) return 0;
+    if (same(hits, t, dev)) return 0;
+    const bar = shakeBar(profile, limits);
+    if (dev >= bar) {
+      hits = hits.filter(h => t - h.t < within).concat({ t, peak: dev });
+      if (hits.length === need) learn(hits);
+      return Math.min(hits.length, need);
+    }
+    if (same(misses, t, dev)) return 0;
+    if (dev >= Math.max(floorOf(profile, limits.min ?? 5), bar / 2)) {
+      misses = misses.filter(m => t - m.t < within).concat({ t, peak: dev });
+      if (misses.length >= need) { learn(misses); misses = []; }
+      return 0;
+    }
+    // resting jitter, learned only while nobody is shaking
+    const recent = [...hits, ...misses].some(h => t - h.t < within);
+    if (!recent) profile.noise += (Math.abs(dev) - profile.noise) * 0.01;
+    return 0;
   };
 }
 
+// What a phone learned about its shaker, read back from storage. Anything
+// odd starts over rather than leaving the bar somewhere nobody can reach.
+export function readShakeProfile(raw) {
+  try {
+    const p = JSON.parse(raw);
+    const ok = n => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n < 100;
+    if (ok(p?.noise) && Array.isArray(p.peaks) && p.peaks.every(ok)) return { noise: p.noise, peaks: p.peaks.slice(-9) };
+  } catch {}
+  return newShakeProfile();
+}
 
 // Merged pull requests per GitHub login (lowercased), from GitHub search
 // results. Bots don't score.

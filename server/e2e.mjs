@@ -74,7 +74,7 @@ await check('a bump alone waits; someone far away does not match', async () => {
 
 await check('two people shaking together nearby both get checked in', async () => {
   const r = await call('/api/bump', { method: 'POST', token: ben.token, body: nearby });
-  assert.deepEqual(r.body.members, [{ name: 'Ana', avatar_url: 'https://github.com/ana-gh.png?size=96' }]);
+  assert.deepEqual(r.body.members, [{ id: ana.member.id, name: 'Ana', avatar_url: 'https://github.com/ana-gh.png?size=96' }]);
   const board = await call(`/api/board?dates=${today}`, { token: cy.token });
   assert.deepEqual(board.body.map(row => row.members.name).sort(), ['Ana', 'Ben']);
   assert.ok(board.body.every(row => row.event_date === today));
@@ -127,6 +127,41 @@ await check('members post what they work on; anyone reads it; only the author de
   assert.equal((await call('/api/posts')).body.length, 1);
   await call('/api/posts/delete', { method: 'POST', token: ana.token, body: { id: made.body.id } });
   assert.equal((await call('/api/posts')).body.length, 0);
+});
+
+await check('a code from one phone signs you in on another, once', async () => {
+  const made = await call('/api/auth/code', { method: 'POST', token: ana.token });
+  assert.match(made.body.code, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.equal((await call('/api/auth/code', { method: 'POST' })).status, 401);
+  // typed lower-case, without the dash, still works
+  const typed = made.body.code.replace('-', '').toLowerCase();
+  const got = await call('/api/auth/claim', { method: 'POST', body: { code: typed } });
+  assert.equal(got.status, 200);
+  assert.equal(got.body.member.name, 'Ana');
+  assert.equal((await call('/api/me', { token: got.body.token })).body.member.login, 'ana-gh');
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: made.body.code } })).status, 404);
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: 'ABCD-EFGH' } })).status, 404);
+});
+
+await check('a code older than ten minutes is refused', async () => {
+  const made = await call('/api/auth/code', { method: 'POST', token: ben.token });
+  sql("update claudesquad.handoffs set at = now() - interval '11 minutes'");
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: made.body.code } })).status, 404);
+});
+
+await check('four people bumping together all get in, and each sees everyone', async () => {
+  sql("delete from claudesquad.bumps; delete from claudesquad.checkins;");
+  const crew = await Promise.all(['Hal', 'Ivy', 'Jo', 'Kit'].map(n => join(n, `${n.toLowerCase()}-gh`)));
+  assert.ok(crew.every(m => m.token), JSON.stringify(crew));
+  const answers = [];
+  for (const m of crew) answers.push((await call('/api/bump', { method: 'POST', token: m.token, body: gym })).body);
+  assert.equal(answers[0].matched, false, JSON.stringify(answers[0]));
+  assert.deepEqual(answers[3].members.map(m => m.name), ['Hal', 'Ivy', 'Jo']);
+  assert.ok(answers[3].members.every(m => m.id && m.avatar_url));
+  // the first one's next re-send finds the other three
+  const again = (await call('/api/bump', { method: 'POST', token: crew[0].token, body: gym })).body;
+  assert.deepEqual(again.members.map(m => m.name), ['Ivy', 'Jo', 'Kit']);
+  assert.equal(Number(sql(`select count(*) from claudesquad.checkins where event_date = '${today}'`)), 4);
 });
 
 await check('signing out ends the session', async () => {

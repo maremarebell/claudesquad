@@ -1,7 +1,7 @@
 // Motion debug: a readout pinned top left showing what the motion sensor
 // sends, measured the way shakeCounter measures a jolt. Switched on from
 // /here/ and listening on its own, so it works on any day, armed or not.
-import { SHAKE, shakeCounter, joltOf } from './checkin.js';
+import { SHAKE, shakeCounter, shakeBar, readShakeProfile, joltOf } from './checkin.js';
 
 const G = 9.81;
 const SPAN = 3000; // ms of history in the graph
@@ -17,8 +17,8 @@ export const counterState = classes =>
 
 // The readout's text. samples ({ t, jolt }) and hits (timestamps of counted
 // jolts) hold the last SPAN ms; events counts every motion event, missing the
-// ones without a reading.
-export function readout({ samples, hits, events, missing, max, interval, accel, counter }, now) {
+// ones without a reading; bar is this phone's current shakeBar.
+export function readout({ samples, hits, events, missing, max, interval, accel, bar, counter }, now) {
   const peak = samples.reduce((p, s) => Math.max(p, s.jolt), -G);
   const inSecond = hits.filter(t => now - t < SHAKE.within).length;
   const rate = samples.filter(s => now - s.t < 1000).length;
@@ -26,7 +26,7 @@ export function readout({ samples, hits, events, missing, max, interval, accel, 
     events ? `events ${events}  ${rate} Hz${interval ? ` (${Math.round(interval)} ms)` : ''}` : 'no motion events yet',
     missing ? `no accel data: ${missing}` : null,
     `x${fmt(accel?.x)} y${fmt(accel?.y)} z${fmt(accel?.z)}`,
-    `jolt ${fmt(samples.at(-1)?.jolt)}  need ${SHAKE.threshold}`,
+    `jolt ${fmt(samples.at(-1)?.jolt)}  need ${bar.toFixed(1)}`,
     `peak ${fmt(samples.length ? peak : null)}  max ${fmt(events - missing ? max : null)}`,
     `jolts ${Math.min(inSecond, SHAKE.need)}/${SHAKE.need} in 1s`,
     `counter: ${counter}`,
@@ -48,8 +48,10 @@ export function motionDebug(root) {
   const ink = css.getPropertyValue('--ink').trim();
   const rule = css.getPropertyValue('--rule').trim();
 
-  // the same counter the check-in uses, fed the same samples
-  const step = shakeCounter();
+  // the same counter the check-in uses, fed the same samples, starting from
+  // what this phone has learned (a copy: the readout never changes the real bar)
+  const profile = (() => { try { return readShakeProfile(localStorage.getItem('squad-shake')); } catch { return readShakeProfile(null); } })();
+  const step = shakeCounter({ profile });
   const samples = []; // { t, jolt }
   const hits = []; // timestamps of counted jolts
   let events = 0, missing = 0, max = 0, interval = null, accel = null;
@@ -77,13 +79,14 @@ export function motionDebug(root) {
     const now = performance.now();
     while (samples.length && now - samples[0].t > SPAN) samples.shift();
     while (hits.length && now - hits[0] > SPAN) hits.shift();
+    const bar = shakeBar(profile);
     text.textContent = readout({
-      samples, hits, events, missing, max, interval, accel, counter: counterState(root.classList),
+      samples, hits, events, missing, max, interval, accel, bar, counter: counterState(root.classList),
     }, now);
 
     // |a| − g over the last few seconds; the dashed line is the threshold,
     // ticks mark counted jolts
-    const top = Math.max(SHAKE.threshold * 2, max);
+    const top = Math.max(bar * 2, max);
     const y = v => H - ((v + G) / (top + G)) * H;
     const x = t => W - ((now - t) / SPAN) * W;
     ctx.clearRect(0, 0, W, H);
@@ -95,7 +98,7 @@ export function motionDebug(root) {
     ctx.strokeStyle = accent;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
-    ctx.moveTo(0, y(SHAKE.threshold)); ctx.lineTo(W, y(SHAKE.threshold));
+    ctx.moveTo(0, y(bar)); ctx.lineTo(W, y(bar));
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.fillStyle = accent;

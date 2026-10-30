@@ -52,7 +52,7 @@ test('the motion readout names what the check-in counter is doing', () => {
   assert.equal(counterState(classes('here--armed', 'here--motion', 'here--waiting')), 'bumping');
 });
 
-const quiet = { samples: [], hits: [], events: 0, missing: 0, max: 0, interval: null, accel: null, counter: 'not armed' };
+const quiet = { samples: [], hits: [], events: 0, missing: 0, max: 0, interval: null, accel: null, bar: 10, counter: 'not armed' };
 
 test('before any motion the readout says so', () => {
   const text = readout(quiet, 5000);
@@ -65,13 +65,13 @@ test('the readout shows rate, peak, missing readings and counted jolts', () => {
   const samples = [{ t: 3500, jolt: 2 }, { t: 4200, jolt: 18.25 }, { t: 4900, jolt: 0.5 }];
   const text = readout({
     samples, hits: [3000, 4200, 4600, 4800], events: 12, missing: 2, max: 21, interval: 16.4,
-    accel: { x: 1, y: 2, z: 9.5 }, counter: 'listening',
+    accel: { x: 1, y: 2, z: 9.5 }, bar: 7.25, counter: 'listening',
   }, 5000);
   assert.deepEqual(text.split('\n'), [
     'events 12  2 Hz (16 ms)',
     'no accel data: 2',
     'x   1.0 y   2.0 z   9.5',
-    'jolt    0.5  need 14',
+    'jolt    0.5  need 7.3',
     'peak   18.3  max   21.0',
     'jolts 3/3 in 1s',
     'counter: listening',
