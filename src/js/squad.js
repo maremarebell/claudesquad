@@ -1,12 +1,13 @@
 // What every page that talks to the check-in server shares: the session token
-// on this phone, calls to the server, merged-PR counts from GitHub, and a
-// few display helpers.
+// on this phone, calls to the server, merged-PR counts from GitHub, and the
+// DOM helpers the collision (collide.js) draws with.
 import { countPRs } from './checkin.js';
 
 // On a laptop running the site locally, the server runs locally too
 // (`node server/index.mjs`, port 10124); everywhere else it's site.apiUrl.
-export const API = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
-  ? 'http://localhost:10124'
+// Empty in the build, which renders the pages and never calls the server.
+export const API = typeof location === 'undefined' ? ''
+  : /^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'http://localhost:10124'
   : document.querySelector('meta[name="squad-api"]').content;
 const TOKEN = 'squad-token';
 
@@ -19,8 +20,14 @@ export class SignedOut extends Error {}
 
 // The free server sleeps when idle and takes up to a minute to wake, during
 // which requests fail or come back 502/503. Reads keep trying for 90 seconds;
-// writes (join, bump) don't, so nothing is sent twice.
+// writes (join, bump) don't, so nothing is sent twice. A request that hangs
+// fails instead of holding its caller for good: after 10s for reads and bumps,
+// which their callers try again, and after a minute for a one-off write like
+// join or a post, so it still rides out a server waking up.
 const WAKE_MS = 90000;
+const FETCH_MS = 10000;
+const WRITE_MS = 60000;
+const UNREACHABLE = "Can't reach the check-in server. Check your signal and try again.";
 
 export async function api(path, body) {
   const t = token.get();
@@ -33,14 +40,19 @@ export async function api(path, body) {
         method: body ? 'POST' : 'GET',
         headers: { 'Content-Type': 'application/json', ...(t && { Authorization: `Bearer ${t}` }) },
         body: body && JSON.stringify(body),
+        signal: AbortSignal.timeout?.(body && path !== '/api/bump' ? WRITE_MS : FETCH_MS),
       });
       if (!retry || ![502, 503, 504].includes(res.status) || Date.now() > until) break;
     } catch {
-      if (!retry || Date.now() > until) throw new Error("Can't reach the check-in server. Check your signal and try again.");
+      if (!retry || Date.now() > until) throw new Error(UNREACHABLE);
     }
     await new Promise(r => setTimeout(r, 3000));
   }
-  const out = await res.json().catch(() => ({}));
+  // an empty body is fine; a body cut off by the timeout is not an answer
+  const out = await res.json().catch(e => {
+    if (e.name === 'TimeoutError') throw new Error(UNREACHABLE);
+    return {};
+  });
   if (res.status === 401) {
     token.set(null);
     throw new SignedOut(out.error || 'Sign in again.');
@@ -54,40 +66,35 @@ export async function api(path, body) {
 // GitHub is unreachable or rate-limited, PRs just don't count until it's back.
 export async function mergedPRs(repos) {
   const key = 'squad-prs';
-  try {
-    const hit = JSON.parse(sessionStorage.getItem(key));
-    if (hit && Date.now() - hit.at < 600000) return new Map(hit.counts);
-  } catch {}
+  const save = v => { try { sessionStorage.setItem(key, JSON.stringify(v)); } catch {} };
+  let hit = null;
+  try { hit = JSON.parse(sessionStorage.getItem(key)); } catch {}
+  if (hit && Date.now() - hit.at < 600000) return new Map(hit.counts);
+  // GitHub allows 10 searches a minute per address, shared by every phone on
+  // the gym wifi: a refusal holds for a minute, with the old counts meanwhile
+  if (hit && Date.now() - hit.failedAt < 60000) return new Map(hit.counts || []);
   const q = ['is:pr', 'is:merged', ...repos.map(r => `repo:${r}`)].join(' ');
   const items = [];
-  for (let page = 1; page <= 5; page++) {
-    const res = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&page=${page}`);
-    if (!res.ok) throw new Error(`GitHub ${res.status}`);
-    const body = await res.json();
-    items.push(...body.items);
-    if (items.length >= body.total_count || !body.items.length) break;
+  try {
+    for (let page = 1; page <= 5; page++) {
+      const res = await fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=100&page=${page}`, { signal: AbortSignal.timeout?.(FETCH_MS) });
+      if (!res.ok) throw new Error(`GitHub ${res.status}`);
+      const body = await res.json();
+      items.push(...body.items);
+      if (items.length >= body.total_count || !body.items.length) break;
+    }
+  } catch (e) {
+    save({ ...hit, failedAt: Date.now() });
+    if (hit?.counts) return new Map(hit.counts);
+    throw e;
   }
   const counts = countPRs(items);
-  try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), counts: [...counts] })); } catch {}
+  save({ at: Date.now(), counts: [...counts] });
   return counts;
 }
 
-export const REDUCED = matchMedia('(prefers-reduced-motion: reduce)');
-
-// Numbers tick up to their new value instead of jumping.
-export function countTo(el, to) {
-  const from = Number(el.textContent) || 0;
-  if (REDUCED.matches || from === to || document.hidden) return void (el.textContent = to);
-  // frames stop in a background tab: make sure the real number lands anyway
-  setTimeout(() => { el.textContent = to; }, 700);
-  const start = performance.now();
-  const step = now => {
-    const k = Math.min(1, (now - start) / 600);
-    el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3));
-    if (k < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
+// Reduced motion is the off switch for every animation; still in the build.
+export const REDUCED = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 
 export function avatar(member, className = 'here__face') {
   const img = document.createElement('img');

@@ -4,6 +4,7 @@
 // Starts the server itself on a spare port. Refuses any non-local database.
 import { spawn, execSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+import { startMockGitHub, MOCK_USER } from './mock-github.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:local@127.0.0.1:55432/postgres';
 if (!/127\.0\.0\.1|localhost/.test(DATABASE_URL)) throw new Error('local databases only');
@@ -12,8 +13,17 @@ const API = `http://127.0.0.1:${PORT}`;
 const sql = q => execSync(`docker exec -i sq-pg psql -U postgres -tA`, { input: q, encoding: 'utf8' }).trim();
 
 sql('drop schema if exists claudesquad cascade; drop table if exists posts, sessions, bumps, checkins, members cascade;');
+// Sign in with GitHub runs against server/mock-github.mjs, not GitHub
+const GITHUB_PORT = 10125;
+const GITHUB_URL = `http://127.0.0.1:${GITHUB_PORT}`;
+const mockGitHub = await startMockGitHub(GITHUB_PORT);
 const server = spawn('node', [new URL('./index.mjs', import.meta.url).pathname], {
-  env: { ...process.env, DATABASE_URL, PORT, SITE_URL: 'https://claudesquad.org' },
+  env: {
+    ...process.env, DATABASE_URL, PORT, SITE_URL: 'https://claudesquad.org',
+    // the address the server gives GitHub to send people back to (Render sets it)
+    RENDER_EXTERNAL_URL: API,
+    GITHUB_CLIENT_ID: 'mock-client', GITHUB_SECRET: 'mock-secret', GITHUB_URL, GITHUB_API_URL: GITHUB_URL,
+  },
   stdio: ['ignore', 'pipe', 'inherit'],
 });
 await new Promise(r => server.stdout.once('data', r));
@@ -51,9 +61,12 @@ await check('joining with a name and GitHub username signs you in', async () => 
   cy = await join('Cy', 'cy-gh');
 });
 
-await check('a GitHub username already in the squad cannot be taken by typing it', async () => {
-  const r = await call('/api/join', { method: 'POST', body: { name: 'Not Ana', github: 'ANA-gh' } });
-  assert.equal(r.status, 409);
+await check('typing a username already in the squad signs in as that member', async () => {
+  const r = await call('/api/join', { method: 'POST', body: { name: 'Ana again', github: 'ANA-gh' } });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.member.id, (await call('/api/me', { token: ana.token })).body.member.id);
+  assert.equal(r.body.member.name, 'Ana', 'the name on file stays');
+  assert.equal((await call('/api/me', { token: r.body.token })).body.member.login, 'ana-gh');
 });
 
 await check('bad input is refused with a message', async () => {
@@ -171,6 +184,82 @@ await check('signing out ends the session', async () => {
   assert.equal((await call('/api/me', { token: cy.token })).status, 401);
 });
 
+// Sign in with GitHub, the way a browser walks it: our redirect to GitHub
+// (with the state cookie), GitHub's redirect back with a code, and our
+// redirect to the site with the session in the fragment.
+const hop = async (url, cookie) => {
+  const res = await fetch(url, { redirect: 'manual', headers: cookie ? { Cookie: cookie } : {} });
+  return { status: res.status, location: res.headers.get('location'), cookie: res.headers.get('set-cookie'), body: await res.json().catch(() => null) };
+};
+async function signInWithGitHub(query = '') {
+  const start = await hop(`${API}/api/auth/github${query}`);
+  assert.equal(start.status, 302);
+  assert.ok(start.location.startsWith(`${GITHUB_URL}/login/oauth/authorize?`), start.location);
+  assert.match(start.cookie, /^gh_state=[a-f0-9]+(\.[A-Za-z0-9_-]+)?; Path=\/api\/auth; HttpOnly; Secure; SameSite=Lax/);
+  const state = start.cookie.match(/gh_state=([^;]+)/)[1];
+  assert.equal(new URL(start.location).searchParams.get('redirect_uri'), `${API}/api/auth/github/callback`);
+  const github = await hop(start.location);
+  assert.equal(github.status, 302);
+  assert.equal(new URL(github.location).searchParams.get('state'), state);
+  return { state, done: await hop(github.location, `gh_state=${state}`) };
+}
+
+await check('the config says GitHub sign-in is on', async () => {
+  assert.deepEqual((await call('/api/config')).body, { github: true });
+});
+
+await check('Sign in with GitHub signs in the GitHub user and verifies the login they typed before', async () => {
+  const { done } = await signInWithGitHub();
+  assert.equal(done.status, 302);
+  const token = done.location.match(/^https:\/\/claudesquad\.org\/here\/#token=(.+)$/)?.[1];
+  assert.ok(token, done.location);
+  const me = (await call('/api/me', { token })).body.member;
+  assert.equal(me.login, MOCK_USER.login);
+  assert.equal(me.name, 'Ana', 'the name Ana typed stays');
+  assert.equal(me.verified, true);
+  assert.equal(me.id, (await call('/api/me', { token: ana.token })).body.member.id, 'same member as the typed join');
+});
+
+await check('a GitHub-verified username can no longer be signed in by typing it', async () => {
+  const r = await call('/api/join', { method: 'POST', body: { name: 'Not Ana', github: MOCK_USER.login } });
+  assert.equal(r.status, 409);
+  assert.match(r.body.error, /Sign in with GitHub/);
+});
+
+await check('the home-screen app collects a GitHub sign-in with its nonce, once', async () => {
+  const nonce = 'app_nonce_0123456789abcdef';
+  const { done } = await signInWithGitHub(`?app=${nonce}`);
+  assert.equal(done.status, 302);
+  const claimed = await call('/api/auth/claim', { method: 'POST', body: { code: nonce } });
+  assert.equal(claimed.status, 200, JSON.stringify(claimed.body));
+  assert.equal(claimed.body.member.login, MOCK_USER.login);
+  assert.equal((await call('/api/me', { token: claimed.body.token })).status, 200);
+  assert.equal((await call('/api/auth/claim', { method: 'POST', body: { code: nonce } })).status, 404);
+});
+
+await check('a callback with the wrong state, or a code GitHub rejects, is refused', async () => {
+  const start = await hop(`${API}/api/auth/github`);
+  const state = start.cookie.match(/gh_state=([^;]+)/)[1];
+  const wrong = await hop(`${API}/api/auth/github/callback?code=mock-code&state=other`, `gh_state=${state}`);
+  assert.equal(wrong.status, 400);
+  const noCookie = await hop(`${API}/api/auth/github/callback?code=mock-code&state=${state}`);
+  assert.equal(noCookie.status, 400);
+  const bad = await hop(`${API}/api/auth/github/callback?code=bad-code&state=${state}`, `gh_state=${state}`);
+  assert.equal(bad.status, 400);
+  assert.match(bad.body.error, /GitHub said no/);
+});
+
+await check('a renamed GitHub account is still the same member', async () => {
+  sql(`update claudesquad.members set login = 'ana-old' where login = '${MOCK_USER.login}'`);
+  const { done } = await signInWithGitHub();
+  const token = done.location.split('#token=')[1];
+  const me = (await call('/api/me', { token })).body.member;
+  assert.equal(me.login, MOCK_USER.login);
+  assert.equal(me.id, (await call('/api/me', { token: ana.token })).body.member.id);
+  assert.equal(Number(sql(`select count(*) from claudesquad.members where github_id = ${MOCK_USER.id}`)), 1);
+});
+
 server.kill();
+mockGitHub.close();
 console.log(results.join('\n'));
 if (results.some(r => r.startsWith('FAIL'))) process.exit(1);

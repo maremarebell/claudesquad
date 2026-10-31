@@ -77,10 +77,8 @@ export function cleanJoin({ name, github: login }) {
   return { name: clean, login };
 }
 
-// A login someone already holds can only be reclaimed through GitHub sign-in.
-export const takenMessage = github => github
-  ? 'That GitHub username is already in the squad. Use Sign in with GitHub, or a code from your other phone.'
-  : 'That GitHub username is already in the squad. On the phone you joined with, tap "Sign in somewhere else" and type the code here.';
+// A login GitHub has vouched for is only signed in through GitHub again.
+export const takenMessage = () => 'That GitHub username signed in with GitHub. Use Sign in with GitHub.';
 
 export function cleanPost({ body, link }) {
   const text = String(body || '').trim().slice(0, 280);
@@ -102,8 +100,10 @@ export const bumpResult = rows => rows.length
   ? { matched: true, members: rows.map(r => ({ id: r.member_id, name: r.name, avatar_url: r.avatar_url })).sort((a, b) => a.name.localeCompare(b.name)) }
   : { matched: false };
 
-export const githubAuthorizeUrl = ({ clientId, state, apiUrl }) =>
-  `https://github.com/login/oauth/authorize?client_id=${clientId}&state=${state}&scope=read:user&redirect_uri=${encodeURIComponent(`${apiUrl}/api/auth/github/callback`)}`;
+export const GITHUB = 'https://github.com';
+export const GITHUB_API = 'https://api.github.com';
+export const githubAuthorizeUrl = ({ clientId, state, apiUrl, githubUrl = GITHUB }) =>
+  `${githubUrl}/login/oauth/authorize?client_id=${clientId}&state=${state}&scope=read:user&redirect_uri=${encodeURIComponent(`${apiUrl}/api/auth/github/callback`)}`;
 
 // What a thrown error becomes on the wire: its own status and message, or a
 // plain 500 that doesn't leak internals.

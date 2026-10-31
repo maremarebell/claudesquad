@@ -1,6 +1,6 @@
 # Claude Squad
 
-Static site for Claude Squad: home, calendar, and crew profiles. Built with [Eleventy](https://www.11ty.dev/).
+Static site for Claude Squad: home, calendar, and crew profiles. React 19 pages, no bundler, built to static HTML with [Eleventy](https://www.11ty.dev/).
 
 ## Develop
 
@@ -17,7 +17,7 @@ Builds to `_site/`. See `CONTRIBUTING.md` for how to add a profile or gallery ph
 
 The check-in server is `server/` (Node + Postgres), hosted on Render next to the site; `render.yaml` describes it. Matching happens on the server, so nobody can check in alone or from home. Locations are deleted after an hour and never sent to anyone.
 
-A GitHub username can only be joined once by typing it. Once a GitHub OAuth app is set up (callback `https://claudesquad-api.onrender.com/api/auth/github/callback`) and its `GITHUB_CLIENT_ID` and `GITHUB_SECRET` are added to the `claudesquad-api` service on Render, a "Sign in with GitHub" button appears, and that's how people get back in on a new phone.
+A GitHub username can only be joined once by typing it. Once a GitHub OAuth app is set up (callback `https://claudesquad-api-z7dp.onrender.com/api/auth/github/callback`, the API service's own URL) and its `GITHUB_CLIENT_ID` and `GITHUB_SECRET` are added to the `claudesquad-api` service on Render, a "Sign in with GitHub" button appears, and that's how people get back in on a new phone.
 
 ### Also on the server
 
