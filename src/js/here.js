@@ -14,7 +14,7 @@
 // render reads nothing from the browser, so it matches the markup the build
 // made; what this phone knows (debug, WebGL, the session) comes in effects.
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard, meetupOn, nextMeetup } from './checkin.js';
+import { SHAKES, POINTS, nyToday, tally, shakeCounter, readShakeProfile, leaderboard, meetupOn, nextMeetup, tapsOf } from './checkin.js';
 import { plural, githubLogin, profileLink } from './format.js';
 import { PIG } from './pig.js';
 import { collide } from './collide.js';
@@ -53,24 +53,37 @@ const isApp = () => matchMedia('(display-mode: standalone)').matches || navigato
 const PENDING = 'squad-github-nonce';
 // what this phone has learned about how its owner shakes (see shakeCounter)
 const SHAKE = 'squad-shake';
+// after the third shake, bumps go out every 2s for this long with no match
+const WAIT_MS = 30000;
 // after the first match the group stays open this long with nobody new
 const GROUP_MS = 6000;
 const GROUP_MAX_MS = 40000;
+// a partner who shook in after this phone gave up still brings it in, as long
+// as the server still matches this phone's last bump; the board is read for
+// that long after. Keep equal to the 20s window in server/index.mjs.
+const LATE_MS = 20000;
+// meetups that get the bigger burst
+const MILESTONES = [1, 5, 10, 25, 50, 100];
+// what the hand feels at each step, as vibrate() patterns: a tick for a tap or
+// a counted shake, a fainter one per re-send while waiting, three quick ones as
+// the bump goes out, two heavy hits as the faces collide, a double for a miss
+const HAPTIC = { tap: 20, shake: 25, tick: 12, send: [30, 50, 30, 50, 90], hit: [90, 70, 160], miss: [60, 80, 60] };
 
-// Where the phone is. Asked at the tap to warm it up, then again for every
-// bump (a fix up to 30s old is reused), so walking to the gym with the page
-// open doesn't leave a stale location behind. Matches are within 250m.
+const LOCATION_OFF = 'Location is off. A bump needs it to know you are with the squad.';
+// Where the phone is. The phone is followed from the tap on (`follow` in
+// Here), so the bump goes out the instant the third shake lands; this one-shot
+// is for a bump before the first fix has arrived. Matches are within 250m.
 // Indoors GPS often never gets a fix, so a timeout falls back to the phone's
 // rough location (wifi and cell towers), which is still well inside 250m.
-const where = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
-  pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }), reject, opts));
+const point = pos => ({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+const where = opts => new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(pos => resolve(point(pos)), reject, opts));
 
 async function locate() {
   if (!navigator.geolocation) throw new Error("This browser can't share a location.");
   try {
     return await where({ enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
   } catch (err) {
-    if (err.code === err.PERMISSION_DENIED) throw new Error('Location is off. A bump needs it to know you are with the squad.');
+    if (err.code === err.PERMISSION_DENIED) throw new Error(LOCATION_OFF);
     try {
       return await where({ enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
     } catch {
@@ -138,6 +151,9 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
   // the live shake listener and its fallback timer, so sign-out can stop them
   const disarm = useRef(() => {});
   const shakeProfile = useRef(null);
+  // the latest location fix and the watch that keeps it fresh while armed
+  const fix = useRef(null);
+  const watcher = useRef(null);
   const installPrompt = useRef(null);
   const pending = useRef(null);
   const polling = useRef(null);
@@ -149,11 +165,28 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
   };
 
   // Android buzzes through vibrate(). iOS Safari has no vibrate, but toggling a
-  // switch-style checkbox through its label plays the system haptic.
+  // switch-style checkbox through its label plays the system haptic, so a
+  // pattern plays there as one tick per "on" (tapsOf).
   const buzz = pattern => {
-    if (navigator.vibrate) navigator.vibrate(pattern);
-    else haptic.current?.click();
+    if (navigator.vibrate) return navigator.vibrate(pattern);
+    const tick = () => haptic.current?.click();
+    tapsOf(pattern).forEach(at => (at ? setTimeout(tick, at) : tick()));
   };
+
+  // Follow the phone from the tap on, so a bump never waits on GPS. A phone
+  // that stays put gets no new fixes, so the last one is kept, not aged out.
+  function follow() {
+    if (watcher.current != null || !navigator.geolocation) return;
+    watcher.current = navigator.geolocation.watchPosition(
+      pos => { fix.current = point(pos); },
+      err => { if (err.code === err.PERMISSION_DENIED) say(LOCATION_OFF); },
+      { enableHighAccuracy: true });
+  }
+  function unfollow() {
+    if (watcher.current != null) navigator.geolocation.clearWatch(watcher.current);
+    watcher.current = null;
+    fix.current = null;
+  }
 
   // A signed-out answer from the server takes the page back to the join form.
   async function api(path, body) {
@@ -303,22 +336,25 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
     }
   }
 
-  const smash = them => collide({ me: userRef.current, them, reduced: REDUCED.matches, shake: root.current, onImpact: () => buzz([90, 70, 160]) });
+  const smash = them => collide({ me: userRef.current, them, reduced: REDUCED.matches, shake: root.current, onImpact: () => buzz(HAPTIC.hit) });
 
   // Back to waiting for shakes, after a miss or an error.
   function rearm(msg) {
     checkingIn.current = false;
     setFlag({ waiting: false });
     setPips(0);
+    buzz(HAPTIC.miss);
     say(msg);
     listen();
   }
 
   // The third shake lands here. Send the bump; if nobody nearby has shaken in
-  // the last 20 seconds, send it again every 2s for 20s. Re-sending (rather
-  // than just watching for a check-in) is what lets someone who's already in
-  // see that their newcomer arrived, and it catches a partner who bumped a
-  // moment later. If the user changes mid-wait, the loop just stops.
+  // the last 20 seconds, send it again every 2s for WAIT_MS, with a tick in
+  // the hand each time. Re-sending (rather than just watching for a check-in)
+  // is what lets someone who's already in see that their newcomer arrived, and
+  // it catches a partner who bumped a moment later. If the user changes
+  // mid-wait, the loop just stops. A request that drops is tried again on the
+  // next pass, so one bad second of signal doesn't end the bump.
   //
   // Any number can bump together: after the first match the group stays open,
   // re-sending until GROUP_MS pass with nobody new, so a third or fourth phone
@@ -332,15 +368,27 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
     say('Bumping…');
     const wasIn = flagsRef.current.checkedIn;
     const group = new Map();
+    const started = Date.now();
     let mine = 0;
     let first = 0;
     let last = 0;
+    let lastError = '';
     try {
       for (let i = 0; ; i++) {
         if (i) await sleep(2000);
         if (userRef.current !== me) return;
-        const at = await locate();
-        const data = await api('/api/bump', { lat: at.lat, lng: at.lng });
+        const at = fix.current || await locate();
+        if (userRef.current !== me) return;
+        // a one-shot fix is kept too, so a slow watch costs the wait once, not every pass
+        fix.current ||= at;
+        let data = {};
+        try {
+          data = await api('/api/bump', { lat: at.lat, lng: at.lng });
+          lastError = '';
+        } catch (e) {
+          if (e instanceof SignedOut) throw e;
+          lastError = e.message;
+        }
         if (userRef.current !== me) return;
         const fresh = (data.members || []).filter(m => !group.has(m.id));
         fresh.forEach(m => group.set(m.id, m));
@@ -353,15 +401,47 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
             joined(fresh, [...group.values()]);
           }
         }
-        if (first ? Date.now() - last > GROUP_MS || Date.now() - first > GROUP_MAX_MS : i >= 10) break;
-        if (!i && !first) say('Now get someone next to you to shake too…');
+        if (first ? Date.now() - last > GROUP_MS || Date.now() - first > GROUP_MAX_MS : Date.now() - started > WAIT_MS) break;
+        if (!first) {
+          if (i) buzz(HAPTIC.tick);
+          else say('Now get someone next to you to shake too…');
+        }
       }
     } catch (e) {
       if (userRef.current === me && !first) return rearm(e.message);
     }
     if (userRef.current !== me) return;
-    if (!first) return rearm('Nobody shook back. Shake together, at the same time.');
+    if (!first) {
+      rearm(lastError || 'Nobody shook back. Shake together, at the same time.');
+      return lateIn(me, wasIn);
+    }
     finish(wasIn, [...group.values()], mine);
+  }
+
+  // This phone gave up, but a partner who shook in late still checks both in
+  // on the server, and the board says so. Only a newcomer can be seen landing
+  // this way. The screen is left alone once someone else owns it: a new bump
+  // (which lands on its own), a sign-out, or a reload that read the board.
+  async function lateIn(me, wasIn) {
+    if (wasIn) return;
+    const until = Date.now() + LATE_MS;
+    const mine = () => userRef.current === me && !checkingIn.current && !flagsRef.current.checkedIn;
+    while (Date.now() < until) {
+      await sleep(5000);
+      if (!mine()) return;
+      const { inToday, mine: meetups } = await renderBoard().catch(() => ({}));
+      if (!mine()) return;
+      if (!inToday) continue;
+      disarm.current();
+      unfollow();
+      setFlag({ armed: false, checkedIn: true });
+      setBtn(b => ({ ...b, hidden: true }));
+      buzz(HAPTIC.hit);
+      burst(MILESTONES.includes(meetups));
+      say(`Bumped. Meetup #${meetups}, +${plural(POINTS.meetup, 'point')}.`);
+      setWelcome(meetups === 1);
+      return;
+    }
   }
 
   // Matched. Celebrate, and on someone's first meetup put the GitHub link
@@ -387,7 +467,7 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
       return mine;
     }
     say(`Bumped with ${who}. Meetup #${mine}, +${plural(POINTS.meetup, 'point')}. More can shake in now.`);
-    burst([1, 5, 10, 25, 50, 100].includes(mine));
+    burst(MILESTONES.includes(mine));
     setWelcome(mine === 1);
     return mine;
   }
@@ -413,6 +493,9 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
     if (wasIn) {
       setFlag({ armed: true });
       listen();
+    } else {
+      // in for the day: the button is gone, so the location can stop
+      unfollow();
     }
   }
 
@@ -424,6 +507,8 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
   // Listen for three shakes, then bump. The button stays live: a tap bumps
   // too, for shakes that don't register.
   function listen() {
+    // never two listeners: whatever was listening stops first
+    disarm.current();
     if (!flagsRef.current.motion) return setBtn({ label: 'Tap to bump', hidden: false });
     setBtn({ label: 'Shake! (or tap)', hidden: false });
     // nothing typed should be left in focus while the phone shakes
@@ -437,7 +522,7 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
       heard = true;
       const n = step(e.timeStamp, accel);
       if (!n) return;
-      buzz(25);
+      buzz(n >= SHAKES ? HAPTIC.send : HAPTIC.shake);
       rep(n);
       setPips(n);
       if (n >= SHAKES) {
@@ -465,6 +550,8 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
   // a tap is the fallback for phones that won't shake.
   async function arm() {
     if (checkingIn.current) return;
+    const me = userRef.current;
+    buzz(flagsRef.current.armed ? HAPTIC.send : HAPTIC.tap);
     if (flagsRef.current.armed) {
       rep(1);
       return bump();
@@ -475,8 +562,13 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
     if (hasMotion && typeof DeviceMotionEvent.requestPermission === 'function') {
       motionOk = await DeviceMotionEvent.requestPermission().catch(() => 'denied') === 'granted';
     }
-    locate().catch(e => say(e.message));
+    // iOS asked, and meanwhile a second tap may have bumped and landed, or the
+    // user may have left: whoever owns the screen now keeps it
+    if (userRef.current !== me || !flagsRef.current.armed) return;
     setFlag({ motion: motionOk });
+    follow();
+    // a second tap's bump is still out; it listens again itself
+    if (checkingIn.current) return;
     say(motionOk ? 'Shake your phone at the same time as someone next to you.'
       : 'Tap at the same time as someone next to you.');
     listen();
@@ -495,6 +587,7 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
     if (nav) nav.textContent = me ? 'Check in' : 'Log in';
     disarm.current();
     disarm.current = () => {};
+    unfollow();
     checkingIn.current = false;
     setFlag({ armed: false, checkedIn: false, waiting: false, motion: false, sleeping: false });
     setCheckin(false);
@@ -568,7 +661,13 @@ export function Here({ repo, branch, apiUrl, prRepos, events }) {
       });
     }).catch(e => say(e.message));
     // coming back to the app checks straight away
-    const onVisible = () => { if (!document.hidden) collect(); };
+    // back from the lock screen: the board catches up, and a server that fell
+    // asleep starts waking before anyone shakes
+    const onVisible = () => {
+      if (document.hidden) return;
+      collect();
+      if (userRef.current && !checkingIn.current) renderBoard().catch(() => {});
+    };
     addEventListener('visibilitychange', onVisible);
     // R3F reports a refused WebGL context as a rejection: keep the flat pig
     const onReject = e => { if (/webgl/i.test(String(e.reason?.message))) { setGl(false); setIs3d(false); } };
