@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { nyToday, tally, shakeCounter, shakeBar, newShakeProfile, readShakeProfile, countPRs, leaderboard, SHAKES, POINTS, joltOf, meetupOn, nextMeetup } from '../src/js/checkin.js';
+import { nyToday, tally, shakeCounter, shakeBar, newShakeProfile, readShakeProfile, countPRs, leaderboard, SHAKES, POINTS, joltOf, meetupOn, nextMeetup, tapsOf } from '../src/js/checkin.js';
 
 const mare = { id: 'u2', name: 'Mare' };
 const iso = { id: 'u1', name: 'Iso' };
@@ -179,6 +179,13 @@ test('merged PRs count per login, case-insensitive, bots left out', () => {
   ]);
   assert.equal(prs.get('iso'), 2);
   assert.equal(prs.size, 1);
+});
+
+test('on iPhone a vibrate pattern plays as one tick per "on"', () => {
+  assert.deepEqual(tapsOf(30), [0]);
+  assert.deepEqual(tapsOf([90, 70, 160]), [0, 160]);
+  assert.deepEqual(tapsOf([30, 50, 30, 50, 90]), [0, 80, 160]);
+  assert.deepEqual(tapsOf([]), []);
 });
 
 test('the leaderboard adds meetups and PRs and drops members with nothing', () => {

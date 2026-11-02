@@ -151,3 +151,16 @@ test('a GitHub error is thrown for the caller to treat as no PRs', async () => {
   answer([403, {}]);
   await assert.rejects(mergedPRs(['a/x']), { message: 'GitHub 403' });
 });
+
+test('after a refusal GitHub is left alone for a minute, and old counts stand in', async () => {
+  answer([200, { total_count: 1, items: [pr('mare')] }]);
+  await mergedPRs(['a/x']);
+  mock.timers.tick(11 * 60_000);
+  answer([403, {}]);
+  assert.deepEqual([...await mergedPRs(['a/x'])], [['mare', 1]], 'the refused call keeps the old counts');
+  assert.deepEqual([...await mergedPRs(['a/x'])], [['mare', 1]]);
+  assert.equal(calls.length, 1, 'no second search inside the minute');
+  mock.timers.tick(61_000);
+  await mergedPRs(['a/x']);
+  assert.equal(calls.length, 2);
+});

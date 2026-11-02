@@ -26,13 +26,15 @@ import pg from 'pg';
 import {
   LIVE_SITE, Oops, hash, allowedOrigins, connectionFor, readJSON as body, bearer, stateFromCookie,
   avatarFor, parseDates, cleanJoin, takenMessage, cleanPost, cleanBump, bumpResult, githubAuthorizeUrl, errorReply,
-  githubState, appFromState, codeFrom, claimKey,
+  githubState, appFromState, codeFrom, claimKey, GITHUB, GITHUB_API,
 } from './rules.mjs';
 
 const {
   DATABASE_URL, PORT = 10000,
   SITE_URL = LIVE_SITE,
   GITHUB_CLIENT_ID, GITHUB_SECRET,
+  // GitHub itself, or server/mock-github.mjs when trying the sign-in locally
+  GITHUB_URL = GITHUB, GITHUB_API_URL = GITHUB_API,
 } = process.env;
 const API_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 const ORIGINS = allowedOrigins(SITE_URL);
@@ -95,9 +97,14 @@ const routes = {
 
   'POST /api/join': async req => {
     const { name: clean, login } = cleanJoin(await body(req));
-    // typing a friend's username doesn't take over their points
-    const taken = await db.query('select id, verified from members where lower(login) = lower($1)', [login]);
-    if (taken.rows[0]) throw new Oops(409, takenMessage(github));
+    // A username already in the squad signs in as that member, from any phone.
+    // Once GitHub has vouched for a login (Sign in with GitHub), only GitHub
+    // can sign it in again.
+    const known = await db.query('select id, login, name, avatar_url, verified from members where lower(login) = lower($1)', [login]);
+    if (known.rows[0]) {
+      if (known.rows[0].verified && github) throw new Oops(409, takenMessage());
+      return { token: await signIn(known.rows[0].id), member: known.rows[0] };
+    }
     const { rows } = await db.query(
       'insert into members (login, name, avatar_url) values ($1, $2, $3) returning id, login, name, avatar_url, verified',
       [login, clean, avatarFor(login)]);
@@ -111,7 +118,7 @@ const routes = {
     const state = githubState(randomBytes(16).toString('hex'), url.searchParams.get('app'));
     res.writeHead(302, {
       'Set-Cookie': `gh_state=${state}; Path=/api/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-      Location: githubAuthorizeUrl({ clientId: GITHUB_CLIENT_ID, state, apiUrl: API_URL }),
+      Location: githubAuthorizeUrl({ clientId: GITHUB_CLIENT_ID, state, apiUrl: API_URL, githubUrl: GITHUB_URL }),
     });
     res.end();
   },
@@ -119,17 +126,23 @@ const routes = {
   'GET /api/auth/github/callback': async (req, res, url) => {
     const state = stateFromCookie(req.headers.cookie);
     if (!state || state !== url.searchParams.get('state')) throw new Oops(400, 'Sign-in expired, try again.');
-    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+    const tokenRes = await fetch(`${GITHUB_URL}/login/oauth/access_token`, {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ client_id: GITHUB_CLIENT_ID, client_secret: GITHUB_SECRET, code: url.searchParams.get('code') }),
     }).then(r => r.json());
     if (!tokenRes.access_token) throw new Oops(400, 'GitHub said no. Try again.');
-    const gh = await fetch('https://api.github.com/user', {
+    const gh = await fetch(`${GITHUB_API_URL}/user`, {
       headers: { Authorization: `Bearer ${tokenRes.access_token}`, 'User-Agent': 'claudesquad' },
     }).then(r => r.json());
+    if (!gh.login || !gh.id) throw new Oops(400, 'GitHub said no. Try again.');
+    // Someone who signed in before and has since renamed their GitHub account
+    // is the same member: their GitHub id finds them, and the login follows.
+    const renamed = await db.query(
+      'update members set login = $1, avatar_url = $2 where github_id = $3 and lower(login) <> lower($1) returning id',
+      [gh.login, gh.avatar_url, gh.id]);
     // GitHub vouches for this login, so it claims the row even if someone typed it first
-    const { rows } = await db.query(
+    const { rows } = renamed.rows[0] ? renamed : await db.query(
       `insert into members (login, name, avatar_url, github_id, verified) values ($1, $2, $3, $4, true)
        on conflict ((lower(login))) do update set github_id = excluded.github_id, avatar_url = excluded.avatar_url, verified = true,
          name = coalesce(members.name, excluded.name)

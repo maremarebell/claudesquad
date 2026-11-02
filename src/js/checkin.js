@@ -38,6 +38,16 @@ export const joltOf = a =>
 // The timing of a friendshipmog, shared with the motion debug readout.
 export const SHAKE = { need: SHAKES, within: 1000, gap: 150 };
 
+// A vibrate() pattern is [on, off, on, off, …] in ms. iPhone has no vibrate(),
+// only one fixed tick (a switch flipping), so a pattern plays there as a tick
+// at the start of each "on": the offsets, in ms from the start.
+export function tapsOf(pattern) {
+  const taps = [];
+  let t = 0;
+  [].concat(pattern).forEach((ms, i) => { if (i % 2 === 0) taps.push(t); t += ms; });
+  return taps;
+}
+
 // A friendshipmog is SHAKES jolts inside a second. How hard a jolt has to be
 // adapts to the phone and the person shaking it, in m/s² away from gravity:
 // - the bar starts at `start`, then sits at half the strength of their recent

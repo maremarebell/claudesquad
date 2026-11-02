@@ -1,17 +1,18 @@
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const { buildMonths } = require('../src/_data/calendarMonths.js');
-const { pickNext, formatDate } = require('../src/_data/nextEvent.js');
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { buildMonths } from '../src/js/calendar.js';
+import { pickNext, formatDate } from '../src/js/meetup.js';
+
+const require = createRequire(import.meta.url);
 const { slug, reposFrom } = require('../src/_data/prRepos.js');
 
 const ev = (date, extra = {}) => ({ date, title: `Meetup ${date}`, partiful: null, ...extra });
-// local noon, so the build machine's time zone can't move the date
-const day = iso => new Date(`${iso}T12:00:00`);
 
 test('the calendar shows each quarter with an event, in order, and nothing else', () => {
-  const months = buildMonths([ev('2027-02-10'), ev('2026-10-15'), ev('2026-11-12')], day('2026-10-30'));
+  const months = buildMonths([ev('2027-02-10'), ev('2026-10-15'), ev('2026-11-12')], '2026-10-30');
   assert.deepEqual(months.map(m => `${m.name} ${m.year}`), [
     'October 2026', 'November 2026', 'December 2026',
     'January 2027', 'February 2027', 'March 2027',
@@ -19,12 +20,12 @@ test('the calendar shows each quarter with an event, in order, and nothing else'
 });
 
 test('with no events the calendar falls back to the current quarter', () => {
-  const months = buildMonths([], day('2026-05-20'));
+  const months = buildMonths([], '2026-05-20');
   assert.deepEqual(months.map(m => m.name), ['April', 'May', 'June']);
 });
 
 test('calendar weeks start on Sunday, pad with nulls, and carry events and today', () => {
-  const [oct] = buildMonths([ev('2026-10-15', { partiful: 'https://partiful.com/e/x' })], day('2026-10-30'));
+  const [oct] = buildMonths([ev('2026-10-15', { partiful: 'https://partiful.com/e/x' })], '2026-10-30');
   // 1 October 2026 is a Thursday
   assert.deepEqual(oct.weeks[0].slice(0, 5).map(d => d && d.day), [null, null, null, null, 1]);
   assert.ok(oct.weeks.every(w => w.length === 7));
@@ -36,28 +37,28 @@ test('calendar weeks start on Sunday, pad with nulls, and carry events and today
 });
 
 test('meetups without a Partiful link say so in the tooltip', () => {
-  const [oct] = buildMonths([ev('2026-10-29')], day('2026-10-01'));
+  const [oct] = buildMonths([ev('2026-10-29')], '2026-10-01');
   const [meetup] = oct.weeks.flat().find(d => d && d.date === '2026-10-29').events;
   assert.match(meetup.tooltip, /Partiful TBA/);
 });
 
 test('months fully before today are past; the current month is not', () => {
-  const months = buildMonths([ev('2026-08-01'), ev('2026-11-01')], day('2026-10-30'));
+  const months = buildMonths([ev('2026-08-01'), ev('2026-11-01')], '2026-10-30');
   const past = Object.fromEntries(months.map(m => [m.name, m.isPast]));
   assert.deepEqual(past, { July: true, August: true, September: true, October: false, November: false, December: false });
 });
 
 test('leap years give February 29 days', () => {
-  const months = buildMonths([ev('2028-02-01')], day('2028-01-01'));
+  const months = buildMonths([ev('2028-02-01')], '2028-01-01');
   assert.equal(months[1].weeks.flat().filter(Boolean).length, 29);
 });
 
 test('the next meetup is the soonest on or after today, with a readable date', () => {
   const events = [ev('2026-12-03'), ev('2026-10-15'), ev('2026-10-29')];
-  assert.equal(pickNext(events, day('2026-10-29')).date, '2026-10-29');
-  assert.equal(pickNext(events, day('2026-10-30')).date, '2026-12-03');
-  assert.equal(pickNext(events, day('2026-10-30')).dateLabel, 'December 3, 2026');
-  assert.equal(pickNext(events, day('2027-01-01')), null);
+  assert.equal(pickNext(events, '2026-10-29').date, '2026-10-29');
+  assert.equal(pickNext(events, '2026-10-30').date, '2026-12-03');
+  assert.equal(pickNext(events, '2026-10-30').dateLabel, 'December 3, 2026');
+  assert.equal(pickNext(events, '2027-01-01'), null);
   assert.equal(formatDate('2027-01-01'), 'January 1, 2027');
 });
 
@@ -75,7 +76,7 @@ test('PR points count this repo and each project repo once', () => {
 
 // The content people add by PR: catch a broken file before the site builds.
 
-const src = path.join(__dirname, '..', 'src');
+const src = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'src');
 const frontMatter = file => {
   const text = fs.readFileSync(file, 'utf8');
   const block = text.match(/^---\n([\s\S]*?)\n---/);

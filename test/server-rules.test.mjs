@@ -104,10 +104,8 @@ test('joining needs a name (trimmed to 40) and a real-looking GitHub username', 
   assert.doesNotThrow(() => cleanJoin({ name: 'Mare', github: 'a'.repeat(39) }));
 });
 
-test('a taken username points to GitHub sign-in only when it is set up', () => {
-  assert.match(takenMessage(true), /Sign in with GitHub/);
-  assert.doesNotMatch(takenMessage(false), /Sign in with GitHub/);
-  assert.match(takenMessage(false), /Sign in somewhere else/);
+test('a GitHub-verified username points to GitHub sign-in', () => {
+  assert.match(takenMessage(), /Sign in with GitHub/);
 });
 
 test('posts need text (trimmed to 280) and only http(s) links', () => {
@@ -138,6 +136,8 @@ test('a match returns everyone matched, sorted by name; no match says so', () =>
 
 test('GitHub sign-in sends the state and the callback on this server', () => {
   const url = new URL(githubAuthorizeUrl({ clientId: 'cid', state: 'abc', apiUrl: 'https://api.example.com' }));
+  assert.ok(githubAuthorizeUrl({ clientId: 'cid', state: 'abc', apiUrl: 'https://api.example.com', githubUrl: 'http://127.0.0.1:10125' })
+    .startsWith('http://127.0.0.1:10125/login/oauth/authorize?'), 'a local stand-in for GitHub can be named');
   assert.equal(url.origin + url.pathname, 'https://github.com/login/oauth/authorize');
   assert.equal(url.searchParams.get('client_id'), 'cid');
   assert.equal(url.searchParams.get('state'), 'abc');
