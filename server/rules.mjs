@@ -88,6 +88,37 @@ export function cleanPost({ body, link }) {
   return { body: text, link: url || null };
 }
 
+// Only a real Partiful event link is fetched, so this never becomes an
+// open proxy for arbitrary URLs.
+export const PARTIFUL = /^https:\/\/(www\.)?partiful\.com\//;
+export function cleanPartifulUrl(url) {
+  if (!PARTIFUL.test(url || '')) throw new Oops(400, 'That is not a Partiful link.');
+  return url;
+}
+
+// One tag's content, however its attributes are ordered.
+function ogTag(html, prop) {
+  const order1 = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']og:${prop}["'][^>]*content=["']([^"']*)["']`, 'i'));
+  const order2 = html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']og:${prop}["']`, 'i'));
+  const raw = order1?.[1] ?? order2?.[1];
+  return raw ? raw.replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&') : null;
+}
+
+// The title, description and cover image a Partiful page publishes for link
+// previews (the same ones iMessage/Slack show), read straight off its HTML.
+export const partifulInfo = html => ({
+  title: ogTag(html, 'title'),
+  description: ogTag(html, 'description'),
+  image: ogTag(html, 'image'),
+});
+
+export const IMAGE = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
+export function cleanPhoto({ event_date, image }) {
+  if (!DATE.test(event_date || '')) throw new Oops(400, 'A real event date is needed.');
+  if (!IMAGE.test(image || '')) throw new Oops(400, "That doesn't look like an image.");
+  return { event_date, image };
+}
+
 export function cleanBump({ lat, lng }) {
   if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     throw new Oops(400, 'A location is needed to bump.');

@@ -4,6 +4,7 @@ import {
   Oops, hash, allowedOrigins, connectionFor, readJSON, bearer, stateFromCookie, avatarFor, parseDates,
   cleanJoin, takenMessage, cleanPost, cleanBump, bumpResult, githubAuthorizeUrl, errorReply,
   githubState, appFromState, codeFrom, cleanCode, claimKey, CODE_CHARS,
+  cleanPartifulUrl, partifulInfo, cleanPhoto,
 } from '../server/rules.mjs';
 
 const oops = (status, message) => err => err instanceof Oops && err.status === status && (!message || err.message === message);
@@ -143,6 +144,29 @@ test('GitHub sign-in sends the state and the callback on this server', () => {
   assert.equal(url.searchParams.get('state'), 'abc');
   assert.equal(url.searchParams.get('scope'), 'read:user');
   assert.equal(url.searchParams.get('redirect_uri'), 'https://api.example.com/api/auth/github/callback');
+});
+
+test('only a real Partiful link is let through, so the server never proxies anywhere else', () => {
+  assert.equal(cleanPartifulUrl('https://partiful.com/e/abc'), 'https://partiful.com/e/abc');
+  assert.equal(cleanPartifulUrl('https://www.partiful.com/e/abc'), 'https://www.partiful.com/e/abc');
+  for (const url of ['https://evil.example/e/abc', 'http://partiful.com/e/abc', 'https://partiful.com.evil.example', undefined]) {
+    assert.throws(() => cleanPartifulUrl(url), oops(400, 'That is not a Partiful link.'), String(url));
+  }
+});
+
+test("a Partiful page's og: tags come out however their attributes are ordered, entities decoded", () => {
+  const html = `<meta property="og:title" content="Claude Squad 12"><meta content="Lift &amp; prompt. We&#x27;re back." property="og:description"><meta property="og:image" content="https://img.partiful.com/x.jpg">`;
+  assert.deepEqual(partifulInfo(html), { title: 'Claude Squad 12', description: "Lift & prompt. We're back.", image: 'https://img.partiful.com/x.jpg' });
+  assert.deepEqual(partifulInfo('<html>nothing here</html>'), { title: null, description: null, image: null });
+});
+
+test('a photo needs a real date and a data URL that looks like an image', () => {
+  const image = 'data:image/png;base64,aGVsbG8=';
+  assert.deepEqual(cleanPhoto({ event_date: '2026-10-15', image }), { event_date: '2026-10-15', image });
+  assert.throws(() => cleanPhoto({ event_date: 'nope', image }), oops(400, 'A real event date is needed.'));
+  for (const bad of ['not a data url', 'data:text/plain;base64,aGVsbG8=', 'data:image/png,aGVsbG8=', undefined]) {
+    assert.throws(() => cleanPhoto({ event_date: '2026-10-15', image: bad }), oops(400, "That doesn't look like an image."), String(bad));
+  }
 });
 
 test('errors keep their status and message; anything unexpected is a quiet 500', () => {

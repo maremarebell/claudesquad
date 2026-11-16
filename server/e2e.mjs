@@ -179,6 +179,32 @@ await check('four people bumping together all get in, and each sees everyone', a
   assert.equal(Number(sql(`select count(*) from claudesquad.checkins where event_date = '${today}'`)), 4);
 });
 
+await check('session history is public: who checked in on a date, grouped', async () => {
+  const r = await call(`/api/sessions?dates=${today}`);
+  assert.equal(r.status, 200);
+  // the four-people check above is the last thing to touch checkins today
+  assert.deepEqual(r.body[0].members.map(m => m.name).sort(), ['Hal', 'Ivy', 'Jo', 'Kit']);
+  const none = await call('/api/sessions?dates=2000-01-01');
+  assert.deepEqual(none.body, []);
+});
+
+await check('only a real Partiful link is fetched; anything else is refused', async () => {
+  assert.equal((await call('/api/partiful?url=https://evil.example')).status, 400);
+  assert.equal((await call('/api/partiful?url=')).status, 400);
+});
+
+await check('photos need a signed-in member, a real date and an image, and are refused without Cloudinary set up', async () => {
+  assert.equal((await call('/api/photos', { method: 'POST', body: { event_date: today, image: 'data:image/png;base64,aGVsbG8=' } })).status, 401);
+  const bad = await call('/api/photos', { method: 'POST', token: ana.token, body: { event_date: 'nope', image: 'x' } });
+  assert.equal(bad.status, 400);
+  // CLOUDINARY_* is not set for this run, so a well-formed upload still fails, cleanly
+  const ok = await call('/api/photos', { method: 'POST', token: ana.token, body: { event_date: today, image: 'data:image/png;base64,aGVsbG8=' } });
+  assert.equal(ok.status, 503);
+  const list = await call(`/api/photos?dates=${today}`);
+  assert.equal(list.status, 200);
+  assert.deepEqual(list.body, []);
+});
+
 await check('signing out ends the session', async () => {
   await call('/api/signout', { method: 'POST', token: cy.token });
   assert.equal((await call('/api/me', { token: cy.token })).status, 401);

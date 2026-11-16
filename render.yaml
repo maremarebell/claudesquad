@@ -36,3 +36,12 @@ services:
         value: Ov23livvzM8YMCYH5KsO
       - key: GITHUB_SECRET
         sync: false
+      # Session photo uploads: a free Cloudinary account. The cloud name is
+      # not secret; the key and secret are pasted into the dashboard, and the
+      # server turns uploads on once all three are set.
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

@@ -14,6 +14,10 @@
 //   GET  /api/posts                                   -> latest 50 posts            (public)
 //   POST /api/posts           { body, link }          -> post
 //   POST /api/posts/delete    { id }                  -> {}   (your own only)
+//   GET  /api/partiful?url=...                         -> { title, description, image } (public, Partiful only)
+//   GET  /api/sessions?dates=...                       -> [{ event_date, members }]   (public, for /sessions/)
+//   GET  /api/photos?dates=...                         -> [{ id, event_date, url, member }] (public)
+//   POST /api/photos           { event_date, image }  -> { id, event_date, url, member }
 //   GET  /api/config                                  -> { github }
 //
 // A bump is like the old Bump app: members shaking within 20 seconds and 250
@@ -21,12 +25,12 @@
 // number can bump together; each bump answers with everyone it matched.
 import http from 'node:http';
 import { readFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import pg from 'pg';
 import {
   LIVE_SITE, Oops, hash, allowedOrigins, connectionFor, readJSON as body, bearer, stateFromCookie,
   avatarFor, parseDates, cleanJoin, takenMessage, cleanPost, cleanBump, bumpResult, githubAuthorizeUrl, errorReply,
-  githubState, appFromState, codeFrom, claimKey, GITHUB, GITHUB_API,
+  githubState, appFromState, codeFrom, claimKey, GITHUB, GITHUB_API, cleanPartifulUrl, partifulInfo, cleanPhoto,
 } from './rules.mjs';
 
 const {
@@ -35,10 +39,30 @@ const {
   GITHUB_CLIENT_ID, GITHUB_SECRET,
   // GitHub itself, or server/mock-github.mjs when trying the sign-in locally
   GITHUB_URL = GITHUB, GITHUB_API_URL = GITHUB_API,
+  CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET,
 } = process.env;
 const API_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
 const ORIGINS = allowedOrigins(SITE_URL);
 const github = Boolean(GITHUB_CLIENT_ID && GITHUB_SECRET);
+const cloudinary = Boolean(CLOUDINARY_CLOUD_NAME && CLOUDINARY_API_KEY && CLOUDINARY_API_SECRET);
+
+// A Partiful page's own link-preview tags, straight off its HTML; kept for
+// the life of the process so the same event isn't fetched on every visit.
+const partifulCache = new Map();
+
+// Signed (not unsigned) so the upload can only be made by this server, which
+// knows CLOUDINARY_API_SECRET; the browser never sees it.
+async function uploadPhoto(dataUrl) {
+  if (!cloudinary) throw new Oops(503, 'Photo uploads are not set up.');
+  const folder = 'claudesquad';
+  const timestamp = Math.round(Date.now() / 1000);
+  const signature = createHash('sha1').update(`folder=${folder}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`).digest('hex');
+  const form = new URLSearchParams({ file: dataUrl, folder, timestamp: String(timestamp), api_key: CLOUDINARY_API_KEY, signature });
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, { method: 'POST', body: form });
+  const out = await res.json();
+  if (!res.ok) throw new Oops(502, out.error?.message || 'The photo upload failed.');
+  return out.secure_url;
+}
 
 // Everything lives in its own schema, so the database can be shared with
 // another project without any table of ours touching theirs.
@@ -269,6 +293,53 @@ const routes = {
     } finally {
       client.release();
     }
+  },
+
+  // Public: the browser can't read another origin's HTML itself, so this
+  // fetches a Partiful page's own link-preview tags on its behalf.
+  'GET /api/partiful': async (_req, _res, url) => {
+    const link = cleanPartifulUrl(url.searchParams.get('url'));
+    if (!partifulCache.has(link)) {
+      const info = await fetch(link, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; claudesquad-bot)' }, signal: AbortSignal.timeout(8000) })
+        .then(r => r.text()).then(partifulInfo)
+        .catch(() => ({ title: null, description: null, image: null }));
+      partifulCache.set(link, info);
+    }
+    return partifulCache.get(link);
+  },
+
+  // Public, for /sessions/: who checked in on each date asked about.
+  'GET /api/sessions': async (_req, _res, url) => {
+    const dates = parseDates(url.searchParams.get('dates'));
+    const { rows } = await db.query(
+      `select to_char(c.event_date, 'YYYY-MM-DD') as event_date,
+              json_agg(json_build_object('id', m.id, 'name', m.name, 'avatar_url', m.avatar_url) order by m.name) as members
+       from checkins c join members m on m.id = c.member_id
+       where c.event_date = any($1::date[])
+       group by c.event_date`, [dates]);
+    return rows;
+  },
+
+  // Public: the same photos everyone already sees on the session page.
+  'GET /api/photos': async (_req, _res, url) => {
+    const dates = parseDates(url.searchParams.get('dates'));
+    const { rows } = await db.query(
+      `select p.id, to_char(p.event_date, 'YYYY-MM-DD') as event_date, p.url,
+              json_build_object('id', m.id, 'name', m.name, 'avatar_url', m.avatar_url) as member
+       from photos p join members m on m.id = p.member_id
+       where p.event_date = any($1::date[]) order by p.created_at`, [dates]);
+    return rows;
+  },
+
+  'POST /api/photos': async req => {
+    const me = await whoami(req);
+    const { event_date, image } = cleanPhoto(await body(req, 8_000_000));
+    const url = await uploadPhoto(image);
+    const { rows } = await db.query(
+      `insert into photos (member_id, event_date, url) values ($1, $2, $3)
+       returning id, to_char(event_date, 'YYYY-MM-DD') as event_date, url`,
+      [me.id, event_date, url]);
+    return { ...rows[0], member: { id: me.id, name: me.name, avatar_url: me.avatar_url } };
   },
 
   'GET /api/health': async () => ({ ok: true }),

@@ -64,3 +64,14 @@ create table if not exists handoffs (
   member_id uuid not null references members on delete cascade,
   at timestamptz not null default now()
 );
+
+-- Photos added to a session's page, uploaded through Cloudinary; this table
+-- only keeps who posted it, which meetup it's for, and the resulting URL.
+create table if not exists photos (
+  id bigint generated always as identity primary key,
+  member_id uuid not null references members on delete cascade,
+  event_date date not null,
+  url text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists photos_event on photos (event_date);
