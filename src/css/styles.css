@@ -1635,12 +1635,19 @@ h2 {
   aspect-ratio: 4 / 3;
   object-fit: cover;
   display: block;
-  filter: grayscale(1) contrast(1.1);
-  transition: filter 0.3s;
 }
 
-.gallery__item:hover .gallery__image {
-  filter: none;
+/* the grayscale-reveal is a mouse-hover trick; without hover (touch) there's
+   no way to trigger it, so it would otherwise stay grayscale forever */
+@media (hover: hover) {
+  .gallery__image {
+    filter: grayscale(1) contrast(1.1);
+    transition: filter 0.3s;
+  }
+
+  .gallery__item:hover .gallery__image {
+    filter: none;
+  }
 }
 
 .gallery__empty {

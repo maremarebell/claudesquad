@@ -68,10 +68,10 @@ Tests live in `test/`. Logic is kept out of DOM/network code so it can be tested
 
 - Figure out the actual contribution model: current docs (`CONTRIBUTING.md`) assume standalone git/PR workflow, but we still need a real way for people to collaboratively edit the site together live, in person, during a Claude Squad workout session (not everyone will have a dev setup ready to go) — needs more thought.
 
-- Cloudinary account for session photo uploads isn't actually provisioned yet: `render.yaml` has the three env var slots (`CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET`, `sync: false`), but until they're set by hand in the `claudesquad-api` dashboard, `POST /api/photos` answers 503 and the site just shows "Photo uploads are not set up." Create the free account and paste its values in.
+- Cloudinary and GitHub sign-in are both provisioned now: the three `CLOUDINARY_*` env vars and `GITHUB_SECRET` are set by hand in the `claudesquad-api-z7dp` dashboard (`render.yaml` only carries the non-secret `GITHUB_CLIENT_ID`, for the "Claude Squad" OAuth app under this account, not the original one stuck on Iso's). `GET /api/config` on the live API reflects both (`cloudinary`/`github` booleans aren't actually exposed there yet, only `github` is — worth adding a `cloudinary` one too if this needs checking again without a real upload attempt).
 
 - **Next working session, go over:**
-  - Contribution process: re-check `CONTRIBUTING.md` against the now-migrated Render setup (own account, new service names `claudesquad-site` / `claudesquad-api-z7dp`, new Neon project); also noticed pushing to `main` bypassed a branch-protection rule ("changes must go through a PR") — confirm whether that's intended for the owner or should be tightened.
+  - Contribution process: re-check `CONTRIBUTING.md` against the now-migrated Render setup (own account, new service names `claudesquad-site` / `claudesquad-api-z7dp`, new Neon project).
   - How profiles relate to accounts: `src/profiles/*.md` bios vs. the check-in server's membership (GitHub login, session token from `/here/`) — clarify how a profile page and a "member" in the server are actually linked, if at all.
   - Hard-to-reverse infra decisions made so far, to revisit with alternatives/costs before more people start using the app:
     - Database: currently a new Neon Postgres project (free tier). Alternatives to weigh: Render's own free Postgres, Supabase, SQLite-on-disk, others — compare cost at scale and migration difficulty once there's real data.

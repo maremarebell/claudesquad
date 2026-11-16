@@ -33,7 +33,7 @@ services:
       # The client ID is public; the secret is pasted into the dashboard, and
       # the server turns sign-in on once both are set.
       - key: GITHUB_CLIENT_ID
-        value: Ov23livvzM8YMCYH5KsO
+        value: Ov23liOXM5QAcNUGNzv8
       - key: GITHUB_SECRET
         sync: false
       # Session photo uploads: a free Cloudinary account. The cloud name is
