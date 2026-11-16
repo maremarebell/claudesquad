@@ -41,6 +41,24 @@ export function useCountTo(to, start = to) {
   return shown;
 }
 
+// Adds `inClass` to `host` the first time it scrolls into view, once, so a
+// grid of rows/cards can stagger in with CSS (`--i` + `animation-delay`)
+// instead of all popping in with the rest of the page. Reduced motion skips
+// the wait and marks it seen right away.
+export function useReveal(host, inClass) {
+  useEffect(() => {
+    if (!host) return;
+    if (REDUCED.matches) return void host.classList.add(inClass);
+    const io = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      host.classList.add(inClass);
+      io.disconnect();
+    }, { rootMargin: '0px 0px -15% 0px' });
+    io.observe(host);
+    return () => io.disconnect();
+  }, [host, inClass]);
+}
+
 // A GitHub picture; the pig stands in when there is none (or a typo'd username).
 export function Avatar({ member, className = 'here__face' }) {
   const [pig, setPig] = useState(false);

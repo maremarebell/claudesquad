@@ -27,15 +27,14 @@ function jsVersion(dir) {
 // arrives as `profiles`), each item cut down to its url, its rendered body and
 // the front matter fields below.
 const FIELDS = {
-  photo: ["image", "date", "event", "caption"],
   profile: ["name", "role", "photo"],
   project: ["name", "repo", "lead", "help"],
 };
 const plain = v => (v instanceof Date ? v.toISOString().slice(0, 10) : v);
 
 function pageProps(data) {
-  const { site, js, events, prRepos, page, title, name, role, photo, content } = data;
-  const props = { site, js, events, prRepos, url: page.url, title, name, role, photo, content };
+  const { site, js, events, prRepos, pastEvents, session, page, title, name, role, photo, content } = data;
+  const props = { site, js, events, prRepos, pastEvents, session, url: page.url, title, name, role, photo, content };
   // the build machine's date, for the calendar and the next meetup; the
   // browser re-picks by New York's date
   props.today = new Date().toLocaleDateString("en-CA");

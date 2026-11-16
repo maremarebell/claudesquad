@@ -23,6 +23,7 @@ export const IMPORTS = {
 const NAV = [
   { href: '/here/', label: 'Log in', id: 'nav-login' },
   { href: '/calendar/', label: 'Calendar' },
+  { href: '/sessions/', label: 'Sessions', within: true },
   { href: '/projects/', label: 'Projects' },
   { href: '/members/', label: 'Members', within: true },
 ];

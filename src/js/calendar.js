@@ -9,9 +9,11 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const pad = n => String(n).padStart(2, '0');
 const quarterKey = (year, monthIndex) => `${year}-${Math.floor(monthIndex / 3)}`;
-const eventTooltip = event => (event.partiful
-  ? `${event.title}: RSVP on Partiful`
-  : `${event.title}: Partiful TBA, ask in the WhatsApp group`);
+const eventTooltip = (event, isPast) => (isPast
+  ? `${event.title}: see the recap`
+  : event.partiful
+    ? `${event.title}: RSVP on Partiful`
+    : `${event.title}: Partiful TBA, ask in the WhatsApp group`);
 
 // One 3-month block per quarter that has an event in it, in order. It does NOT
 // advance with today's date: the next quarter appears once an event is added
@@ -22,7 +24,8 @@ export function buildMonths(events, today) {
   const eventsByDate = {};
   const quarters = new Set();
   for (const e of events) {
-    (eventsByDate[e.date] ||= []).push({ ...e, tooltip: eventTooltip(e) });
+    const isPast = e.date < today;
+    (eventsByDate[e.date] ||= []).push({ ...e, isPast, tooltip: eventTooltip(e, isPast) });
     const [y, m] = e.date.split('-').map(Number);
     quarters.add(quarterKey(y, m - 1));
   }
@@ -37,7 +40,7 @@ export function buildMonths(events, today) {
       const days = Array(firstWeekday).fill(null);
       for (let d = 1; d <= daysInMonth; d++) {
         const date = `${year}-${pad(monthIndex + 1)}-${pad(d)}`;
-        days.push({ date, day: d, isToday: date === today, events: eventsByDate[date] || [] });
+        days.push({ date, day: d, isToday: date === today, isPast: date < today, events: eventsByDate[date] || [] });
       }
       while (days.length % 7) days.push(null);
       const weeks = [];
@@ -51,18 +54,24 @@ export function buildMonths(events, today) {
 
 function Day({ day, open, onToggle }) {
   if (!day) return html`<div className="calendar__day calendar__day--empty" />`;
-  const today = day.isToday ? ' calendar__day--today' : '';
+  // Whole past months are already dimmed as a block; this is what dims
+  // individual days that are behind us within the current, still-open month.
+  const marks = `${day.isToday ? ' calendar__day--today' : ''}${day.isPast ? ' calendar__day--past' : ''}`;
   const [event] = day.events;
   if (!event) {
-    return html`<div className=${`calendar__day${today}`} data-date=${day.date}><span className="calendar__day-number">${day.day}</span></div>`;
+    return html`<div className=${`calendar__day${marks}`} data-date=${day.date}><span className="calendar__day-number">${day.day}</span></div>`;
   }
-  const linked = Boolean(event.partiful);
-  // Days without a Partiful link yet: tap/click toggles a tooltip instead of navigating.
+  // A past day always has a recap page by now; before the day, there's
+  // nothing to link to until a Partiful RSVP link exists.
+  const href = event.isPast ? `/sessions/${day.date}/` : event.partiful;
+  const linked = Boolean(href);
+  const external = !event.isPast && linked;
+  // Days without anywhere to go yet: tap/click toggles a tooltip instead of navigating.
   const toggle = e => { e.preventDefault(); e.stopPropagation(); onToggle(day.date); };
   return html`
-    <a href=${event.partiful || '#'} target=${linked ? '_blank' : undefined} rel=${linked ? 'noopener' : undefined}
+    <a href=${href || '#'} target=${external ? '_blank' : undefined} rel=${external ? 'noopener' : undefined}
        data-date=${day.date} data-event-name=${event.tooltip}
-       className=${`calendar__day calendar__day--event${today}${linked ? '' : ' calendar__day--no-link'}`}
+       className=${`calendar__day calendar__day--event${marks}${linked ? '' : ' calendar__day--no-link'}`}
        style=${{ background: event.color || 'var(--accent)' }}
        onClick=${linked ? undefined : toggle}>
       <span className="calendar__day-number">${day.day}</span>

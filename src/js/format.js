@@ -12,6 +12,14 @@ export function ago(iso, now = Date.now()) {
   return `${Math.round(s / 86400)}d ago`;
 }
 
+// A Partiful start time in the event's own timezone, e.g. "7:00 PM" — start
+// is a UTC ISO string, timezone an IANA name (both from the Partiful scrape,
+// so either can be missing).
+export function partifulTime(start, timezone) {
+  if (!start || !timezone) return null;
+  return new Date(start).toLocaleTimeString('en-US', { timeZone: timezone, hour: 'numeric', minute: '2-digit' });
+}
+
 // A link shown without its scheme or trailing slash: github.com/a/b
 export function linkLabel(link) {
   const url = new URL(link);

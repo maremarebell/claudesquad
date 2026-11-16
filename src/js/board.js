@@ -60,9 +60,9 @@ export function Board({ prRepos, events, host }) {
   return html`<${Fragment}>
     <h2>Leaderboard</h2>
     <div>
-      <p className="board__how">1 point for every meetup you check in at, 1 for every merged PR.</p>
+      <p className="board__how">1 point for every meetup you check in at, 1 for every merged PR. Top 10 shown.</p>
       <ol className="board__list">
-        ${(rows ?? []).map((row, i) => html`<${Row} key=${row.member.id} rank=${i} ...${row} top=${top} you=${row.member.login === me} />`)}
+        ${(rows ?? []).slice(0, 10).map((row, i) => html`<${Row} key=${row.member.id} rank=${i} ...${row} top=${top} you=${row.member.login === me} />`)}
       </ol>
       <p className="board__status" role="status">${status}</p>
       <p className="board__cta"><a href="/here/">Check in</a> · <a href="/projects/">Find something to PR</a></p>

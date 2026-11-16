@@ -34,7 +34,7 @@ before(async () => {
     configPath: path.join(root, '.eleventy.js'),
     quietMode: true,
   });
-  // permalink: false entries (gallery, projects) have no url and no page
+  // permalink: false entries (projects) have no url and no page
   for (const page of await site.toJSON()) if (page.url) pages[page.url] = page.content;
 });
 
@@ -44,7 +44,7 @@ const importmap = html => JSON.parse(html.match(/<script type="importmap">([^<]+
 
 test('every page is a full document with its scripts from the versioned folder', () => {
   const urls = Object.keys(pages);
-  for (const url of ['/', '/calendar/', '/members/', '/members/dsshimel/', '/projects/', '/admin/', '/here/']) {
+  for (const url of ['/', '/calendar/', '/members/', '/members/dsshimel/', '/projects/', '/admin/', '/here/', '/sessions/', '/sessions/2026-10-15/']) {
     assert.ok(urls.includes(url), `${url} is built (have ${urls.join(' ')})`);
   }
   for (const [url, html] of Object.entries(pages)) {
@@ -109,6 +109,9 @@ test('the islands are rendered with their props on the element', () => {
   assert.match(pages['/projects/'], /<form class="working__form" hidden=""/);
   assert.ok(island(pages['/admin/'], 'admin').props.events.length > 0);
   assert.doesNotMatch(pages['/members/'], /data-island/, 'members has no island');
+  assert.equal(island(pages['/sessions/2026-10-15/'], 'partiful').props.url, 'https://partiful.com/e/6dHvMXv2zeQAVVaE3YFE?c=e7_dnx-u');
+  assert.equal(island(pages['/sessions/2026-10-15/'], 'attendees').props.date, '2026-10-15');
+  assert.equal(island(pages['/sessions/2026-10-15/'], 'photos').props.date, '2026-10-15');
 });
 
 test('the content pages carry their data', () => {
@@ -119,6 +122,9 @@ test('the content pages carry their data', () => {
   assert.match(pages['/projects/'], /\/new\/main\/src\/projects\?filename=your-project\.md&amp;value=---%0A/);
   // React writes apostrophes as &#x27;
   assert.match(pages['/'], /<mark>NYC&#x27;s most elite fitness and computing club<\/mark>\. <mark>We set PRs while we push PRs\.<\/mark> We burn/);
-  assert.match(pages['/admin/'], /<p>Paste a Partiful link/);
+  assert.match(pages['/admin/'], /This only works signed in as/, 'the admin form stays hidden until the owner signs in');
   assert.match(pages['/'], /<script type="module" src="[^"]+\/hero\.js">/);
+  assert.match(pages['/sessions/'], /<a href="\/sessions\/2026-10-15\/" class="sessions__item">/);
+  assert.match(pages['/sessions/2026-10-15/'], /<h1 class="page-title">Claude Squad 12: Website Launch<\/h1>/);
+  assert.match(pages['/sessions/2026-10-15/'], /<p class="session__date">October 15, 2026<\/p>/);
 });

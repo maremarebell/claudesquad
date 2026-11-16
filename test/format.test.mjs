@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plural, ago, linkLabel, githubLogin, profileLink } from '../src/js/format.js';
+import { plural, ago, linkLabel, githubLogin, profileLink, partifulTime } from '../src/js/format.js';
 import { readout, counterState } from '../src/js/motion-debug.js';
 
 test('plural adds an s except for exactly one', () => {
@@ -25,6 +25,12 @@ test('links show without scheme or trailing slash', () => {
   assert.equal(linkLabel('https://github.com/a/b/'), 'github.com/a/b');
   assert.equal(linkLabel('https://example.com'), 'example.com');
   assert.equal(linkLabel('http://example.com:8080/x?y=1'), 'example.com:8080/x');
+});
+
+test('a Partiful start time reads in the event\'s own timezone, or not at all without both pieces', () => {
+  assert.equal(partifulTime('2026-11-13T00:00:00.000Z', 'America/New_York'), '7:00 PM');
+  assert.equal(partifulTime(null, 'America/New_York'), null);
+  assert.equal(partifulTime('2026-11-13T00:00:00.000Z', null), null);
 });
 
 test('typed GitHub usernames lose spaces and a leading @', () => {

@@ -154,10 +154,32 @@ test('only a real Partiful link is let through, so the server never proxies anyw
   }
 });
 
-test("a Partiful page's og: tags come out however their attributes are ordered, entities decoded", () => {
-  const html = `<meta property="og:title" content="Claude Squad 12"><meta content="Lift &amp; prompt. We&#x27;re back." property="og:description"><meta property="og:image" content="https://img.partiful.com/x.jpg">`;
-  assert.deepEqual(partifulInfo(html), { title: 'Claude Squad 12', description: "Lift & prompt. We're back.", image: 'https://img.partiful.com/x.jpg' });
-  assert.deepEqual(partifulInfo('<html>nothing here</html>'), { title: null, description: null, image: null });
+test("a Partiful page's og: tags come out however their attributes are ordered, entities decoded, and the title's trailing \" | Partiful\" is trimmed", () => {
+  const html = `<meta property="og:title" content="Claude Squad 12 | Partiful"><meta content="Lift &amp; prompt. We&#x27;re back." property="og:description"><meta property="og:image" content="https://img.partiful.com/x.jpg">`;
+  assert.deepEqual(partifulInfo(html), { title: 'Claude Squad 12', description: "Lift & prompt. We're back.", image: 'https://img.partiful.com/x.jpg', start: null, timezone: null, place: null });
+  assert.deepEqual(partifulInfo('<html>nothing here</html>'), { title: null, description: null, image: null, start: null, timezone: null, place: null });
+});
+
+test('a Partiful page with no og:description falls back to the plain description meta tag', () => {
+  const html = `<meta property="og:title" content="Claude Squad 14"><meta name="description" content="Back indoors this week."><meta property="og:image" content="https://img.partiful.com/x.jpg">`;
+  assert.deepEqual(partifulInfo(html), { title: 'Claude Squad 14', description: 'Back indoors this week.', image: 'https://img.partiful.com/x.jpg', start: null, timezone: null, place: null });
+});
+
+test("a Partiful page's __NEXT_DATA__ blob gives the start time and an approximate place (never a street address, which Partiful hides until someone RSVPs)", () => {
+  const nextData = JSON.stringify({ props: { pageProps: { event: {
+    startDate: '2026-11-13T00:00:00.000Z', timezone: 'America/New_York',
+    locationInfo: { mapsInfo: { approximateLocation: 'Brooklyn, NY' }, neighborhood: 'Williamsburg' },
+  } } } });
+  const html = `<meta property="og:title" content="Claude Squad 14"><script id="__NEXT_DATA__">${nextData}</script>`;
+  const info = partifulInfo(html);
+  assert.equal(info.start, '2026-11-13T00:00:00.000Z');
+  assert.equal(info.timezone, 'America/New_York');
+  assert.equal(info.place, 'Williamsburg, Brooklyn, NY');
+});
+
+test('a missing or malformed __NEXT_DATA__ blob just means no start time or place, not a crash', () => {
+  assert.deepEqual(partifulInfo('<meta property="og:title" content="Claude Squad 14"><script id="__NEXT_DATA__">not json</script>'),
+    { title: 'Claude Squad 14', description: null, image: null, start: null, timezone: null, place: null });
 });
 
 test('a photo needs a real date and a data URL that looks like an image', () => {

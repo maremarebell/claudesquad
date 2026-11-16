@@ -18,6 +18,7 @@ All meetups live in one file: `src/_data/events.json`. Add an entry (or edit one
 - `emoji`: optional, shown on the calendar day.
 - `color`: optional CSS color for the day's background; defaults to the site accent.
 - `partiful`: the RSVP link. If you don't have one yet, set it to `null`. The day still shows on the calendar (click it to see the title), and the homepage hero links to the calendar instead of an RSVP.
+- `place`: optional, the venue name shown on the session page and the homepage's "Last Session" (e.g. `"Vital"`). Without one, the site falls back to whatever approximate place Partiful itself gives out (a neighbourhood, never a street address) — `/admin/` (signed in as the repo owner) has a place dropdown of known venues plus "Add something else", and a "Pull from Partiful" button that fills it in with Partiful's approximate place as a starting point.
 
 The calendar and the homepage hero both read straight from this file. No other files need to change.
 
@@ -62,17 +63,6 @@ The projects page links each one to its open issues and to issues labelled `good
 
 Every merged pull request to this repo, or to any repo on the Projects page, is 1 point on the leaderboard, as long as you joined with the same GitHub username. Each meetup you check in at is 1 point too.
 
-## Add a gallery photo
+## Photos
 
-1. Add the image to `src/images/gallery/your-file.jpg`.
-2. Create a matching file in `src/gallery/your-file.md`:
-
-   ```md
-   ---
-   image: /images/gallery/your-file.jpg
-   date: 2026-03-15
-   event: Event name
-   caption: Optional one-liner
-   ---
-   ```
-3. Open a PR. The homepage gallery sorts automatically by `date`, newest first.
+Photos aren't added via PR — sign in at `/here/`, go to any session's page, and add one there once you've checked in. The homepage gallery shows the newest of those automatically.

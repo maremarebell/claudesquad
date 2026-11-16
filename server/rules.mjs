@@ -96,21 +96,53 @@ export function cleanPartifulUrl(url) {
   return url;
 }
 
-// One tag's content, however its attributes are ordered.
-function ogTag(html, prop) {
-  const order1 = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']og:${prop}["'][^>]*content=["']([^"']*)["']`, 'i'));
-  const order2 = html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']og:${prop}["']`, 'i'));
+// One meta tag's content, however its attributes are ordered. `name` is
+// matched against either `property` or `name`, e.g. "og:title" or
+// "description".
+function metaTag(html, name) {
+  const order1 = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]*content=["']([^"']*)["']`, 'i'));
+  const order2 = html.match(new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${name}["']`, 'i'));
   const raw = order1?.[1] ?? order2?.[1];
   return raw ? raw.replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&amp;/g, '&') : null;
 }
 
+// Partiful's og: tags carry no start time or location, but a Next.js page
+// embeds its own server-rendered props as JSON in __NEXT_DATA__, and that
+// has both — undocumented and not guaranteed to stick around, so any shape
+// mismatch here just means these come back null, same as a missing og: tag.
+// Partiful itself only ever hands anyone who hasn't RSVP'd an approximate
+// place (a city/neighbourhood, never a street address), so that's all this
+// reads too.
+function partifulEvent(html) {
+  try {
+    return JSON.parse(html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)[1]).props.pageProps.event;
+  } catch {
+    return null;
+  }
+}
+
+function partifulPlace(event) {
+  const maps = event?.locationInfo?.mapsInfo;
+  if (!maps?.approximateLocation) return null;
+  return [event.locationInfo.neighborhood, maps.approximateLocation].filter(Boolean).join(', ');
+}
+
 // The title, description and cover image a Partiful page publishes for link
 // previews (the same ones iMessage/Slack show), read straight off its HTML.
-export const partifulInfo = html => ({
-  title: ogTag(html, 'title'),
-  description: ogTag(html, 'description'),
-  image: ogTag(html, 'image'),
-});
+// Partiful pages don't all set og:description, so that falls back to the
+// plain description meta tag. Every Partiful og:title ends in " | Partiful",
+// redundant next to our own "View on Partiful" link, so that's trimmed off.
+export const partifulInfo = html => {
+  const event = partifulEvent(html);
+  return {
+    title: metaTag(html, 'og:title')?.replace(/ \| Partiful$/, '') ?? null,
+    description: metaTag(html, 'og:description') ?? metaTag(html, 'description'),
+    image: metaTag(html, 'og:image'),
+    start: event?.startDate ?? null,
+    timezone: event?.timezone ?? null,
+    place: partifulPlace(event),
+  };
+};
 
 export const IMAGE = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/;
 export function cleanPhoto({ event_date, image }) {
