@@ -2289,16 +2289,12 @@ h2 {
 .session__photo-grid {
   display: block;
   margin-top: var(--space-md);
-  column-count: 1;
-  column-gap: var(--space-lg);
-}
-
-@media (min-width: 560px) {
-  .session__photo-grid { column-count: 2; }
+  column-count: 2;
+  column-gap: var(--space-md);
 }
 
 @media (min-width: 900px) {
-  .session__photo-grid { column-count: 3; }
+  .session__photo-grid { column-count: 3; column-gap: var(--space-lg); }
 }
 
 .session__photo-grid .gallery__item {

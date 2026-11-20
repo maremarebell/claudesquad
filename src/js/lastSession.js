@@ -31,6 +31,6 @@ export function LastSession({ date, title, time, place, host }) {
       <div className="last-session__photos">
         ${photos.slice(0, 4).map(p => html`<img key=${p.id} src=${thumb(p.url, 160)} alt="" className="last-session__photo" loading="lazy" />`)}
       </div>` : ''}
-    <p className="session__back"><a href=${`/sessions/${date}/`}>Full recap <span aria-hidden="true">→</span></a></p>
+    <p className="session__back"><a href=${`/sessions/${date}/`}>Recap <span aria-hidden="true">→</span></a></p>
   <//>`;
 }
