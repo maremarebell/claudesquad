@@ -2,6 +2,7 @@
 // more at once (POST /api/photos per file, which the server uploads to
 // Cloudinary) - the native picker's own multi-select works on mobile too.
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { api, token, SignedOut } from './squad.js';
 import { thumb } from './format.js';
 import { html, Fragment, useReveal } from './ui.js';
@@ -22,6 +23,7 @@ export function Photos({ date, host }) {
   const [me, setMe] = useState(null);
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -29,6 +31,13 @@ export function Photos({ date, host }) {
     if (token.get()) api('/api/me').then(r => setMe(r.member)).catch(() => {});
   }, [date]);
   useReveal(host, 'session__photos--in');
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = e => { if (e.key === 'Escape') setOpen(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
 
   async function upload(e) {
     const files = [...e.target.files];
@@ -67,8 +76,13 @@ export function Photos({ date, host }) {
       <div className="gallery__grid session__photo-grid">
         ${photos.map((p, i) => html`
           <figure key=${p.id} className="gallery__item" style=${{ '--i': i }}>
-            <img src=${thumb(p.url, 240)} alt="" className="gallery__image" loading="lazy" />
+            <img src=${thumb(p.url, 480)} alt="" className="gallery__image" loading="lazy" onClick=${() => setOpen(p.url)} />
           </figure>`)}
       </div>` : photos && !photos.length && html`<p className="session__status">No photos yet. Be the first to add one.</p>`}
+    ${open && createPortal(html`
+      <div className="lightbox" role="dialog" aria-modal="true" onClick=${() => setOpen(null)}>
+        <button className="lightbox__close here__btn" type="button" aria-label="Close" onClick=${() => setOpen(null)}>✕</button>
+        <img src=${open} alt="" className="lightbox__image" onClick=${e => e.stopPropagation()} />
+      </div>`, document.body)}
   <//>`;
 }
