@@ -1908,7 +1908,8 @@ h2 {
 }
 
 .admin__row input,
-.admin__row select {
+.admin__row select,
+.admin__row textarea {
   padding: var(--space-xs);
   border: 1px solid var(--rule);
   background: var(--site-bg);
@@ -1916,8 +1917,14 @@ h2 {
   font: 16px var(--sans);
 }
 
+.admin__row textarea {
+  min-height: 4.5em;
+  resize: vertical;
+}
+
 .admin__row input:focus-visible,
-.admin__row select:focus-visible {
+.admin__row select:focus-visible,
+.admin__row textarea:focus-visible {
   border-color: var(--accent);
   outline: none;
 }

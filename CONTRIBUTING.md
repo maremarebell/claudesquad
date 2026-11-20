@@ -14,11 +14,11 @@ All meetups live in one file: `src/_data/events.json`. Add an entry (or edit one
 ```
 
 - `date`: `YYYY-MM-DD`.
-- `title`: shown in the calendar tooltip and, if it's the next upcoming one, in the homepage hero.
+- `title`: shown in the calendar tooltip, the homepage hero if it's the next upcoming one, and — once the meetup is past — the session page and the `/sessions/` list, as the real title (see below).
 - `emoji`: optional, shown on the calendar day.
 - `color`: optional CSS color for the day's background; defaults to the site accent.
 - `partiful`: the RSVP link. If you don't have one yet, set it to `null`. The day still shows on the calendar (click it to see the title), and the homepage hero links to the calendar instead of an RSVP.
-- `place`: optional, the venue name shown on the session page and the homepage's "Last Session" (e.g. `"Vital"`). Without one, the site falls back to whatever approximate place Partiful itself gives out (a neighbourhood, never a street address) — `/admin/` (signed in as the repo owner) has a place dropdown of known venues plus "Add something else", and a "Pull from Partiful" button that fills it in with Partiful's approximate place as a starting point.
+- `place`, `time`, `description`, `image`: all optional, shown on the session page's Partiful card and the homepage's "Last Session" once the meetup is past. `/admin/` (signed in as the repo owner) is the real way to fill these in: paste the Partiful link, then "Pull from Partiful" fills all four in from the invite as a one-time starting point — edit any of it before saving, since place especially is only ever approximate there (a neighbourhood, never a street address) until someone RSVPs, and there's a dropdown of known venues plus "Add something else" for that one. None of this is re-fetched from Partiful after you save; it's the real, final value from then on.
 
 The calendar and the homepage hero both read straight from this file. No other files need to change.
 

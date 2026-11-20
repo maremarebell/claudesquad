@@ -120,7 +120,9 @@ test('every meetup in events.json is well formed', () => {
     assert.ok(e.title.trim(), `${e.date} has a title`);
     assert.ok('partiful' in e, `${e.date} has a partiful field`);
     if (e.partiful !== null) assert.match(e.partiful, /^https:\/\/(www\.)?partiful\.com\//, `${e.date} links to Partiful`);
-    if ('place' in e && e.place !== null) assert.ok(typeof e.place === 'string' && e.place.trim(), `${e.date} place is a non-empty string`);
+    for (const field of ['place', 'time', 'description', 'image']) {
+      if (field in e && e[field] !== null) assert.ok(typeof e[field] === 'string' && e[field].trim(), `${e.date} ${field} is a non-empty string`);
+    }
   }
 });
 

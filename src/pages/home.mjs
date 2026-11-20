@@ -37,7 +37,7 @@ export default function Home({ site, js, url, title, today, events, prRepos, pas
     ${last && html`
       <div className="content">
         <h2>Last Session</h2>
-        <${Island} name="lastSession" component=${LastSession} props=${{ date: last.date, title: last.title, url: last.partiful, place: last.place }} className="last-session" />
+        <${Island} name="lastSession" component=${LastSession} props=${{ date: last.date, title: last.title, time: last.time, place: last.place }} className="last-session" />
       </div>`}
 
     <${Island} name="board" component=${Board} props=${{ prRepos, events }} as="section" className="content board" id="board" />

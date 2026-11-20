@@ -3,6 +3,7 @@
 // first. Replaces the old PR-submitted gallery now that uploading is live.
 import { useState, useEffect } from 'react';
 import { api } from './squad.js';
+import { thumb } from './format.js';
 import { html, Fragment } from './ui.js';
 
 // Home only teases recent photos; everything else is on the sessions themselves.
@@ -26,7 +27,7 @@ export function Gallery({ dates, lastDate }) {
     <div className="gallery__grid">
       ${newest.slice(0, LIMIT).map(p => html`
         <a key=${p.id} href=${`/sessions/${p.event_date}/`} className="gallery__item">
-          <img src=${p.url} alt="" className="gallery__image" loading="lazy" />
+          <img src=${thumb(p.url, 240)} alt="" className="gallery__image" loading="lazy" />
         </a>`)}
     </div>
     ${newest.length > LIMIT && html`<p className="gallery__more"><a href="/sessions/">See more photos on each session's page <span aria-hidden="true">→</span></a></p>`}

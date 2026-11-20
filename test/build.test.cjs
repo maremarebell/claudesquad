@@ -109,7 +109,7 @@ test('the islands are rendered with their props on the element', () => {
   assert.match(pages['/projects/'], /<form class="working__form" hidden=""/);
   assert.ok(island(pages['/admin/'], 'admin').props.events.length > 0);
   assert.doesNotMatch(pages['/members/'], /data-island/, 'members has no island');
-  assert.equal(island(pages['/sessions/2026-10-15/'], 'partiful').props.url, 'https://partiful.com/e/6dHvMXv2zeQAVVaE3YFE?c=e7_dnx-u');
+  assert.match(pages['/sessions/2026-10-15/'], /href="https:\/\/partiful\.com\/e\/6dHvMXv2zeQAVVaE3YFE\?c=e7_dnx-u"/, 'the Partiful card is static now, straight from events.json');
   assert.equal(island(pages['/sessions/2026-10-15/'], 'attendees').props.date, '2026-10-15');
   assert.equal(island(pages['/sessions/2026-10-15/'], 'photos').props.date, '2026-10-15');
 });
@@ -125,6 +125,6 @@ test('the content pages carry their data', () => {
   assert.match(pages['/admin/'], /This only works signed in as/, 'the admin form stays hidden until the owner signs in');
   assert.match(pages['/'], /<script type="module" src="[^"]+\/hero\.js">/);
   assert.match(pages['/sessions/'], /<a href="\/sessions\/2026-10-15\/" class="sessions__item">/);
-  assert.match(pages['/sessions/2026-10-15/'], /<h1 class="page-title">Claude Squad 12: Website Launch<\/h1>/);
+  assert.match(pages['/sessions/2026-10-15/'], /<h1 class="page-title">Claude Squad 12: Website Launch 🚀<\/h1>/);
   assert.match(pages['/sessions/2026-10-15/'], /<p class="session__date">October 15, 2026<\/p>/);
 });

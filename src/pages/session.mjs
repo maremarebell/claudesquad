@@ -1,7 +1,9 @@
 // /sessions/{date}/: one page per past meetup (paginated over pastEvents).
-// The build renders the frame from events.json; who showed up, the Partiful
-// card and the photos are all fetched live from the check-in server, same as
-// the homepage leaderboard.
+// The build renders everything from events.json, including the Partiful
+// card now (title/time/place/description/image, set once via /admin/'s
+// "Pull from Partiful" since none of that changes after the invite exists).
+// Who showed up and the photos are still fetched live from the check-in
+// server, same as the homepage leaderboard.
 import { html } from '../js/ui.js';
 import { Layout, Island } from '../_includes/layout.mjs';
 import { formatDate } from '../js/meetup.js';
@@ -37,7 +39,9 @@ export default function SessionPage({ site, js, url, session }) {
         <p className="session__date">${formatDate(session.date)}</p>
       </header>
 
-      <${Island} name="partiful" component=${Partiful} props=${{ url: session.partiful, place: session.place }} as="section" className="session__partiful" />
+      <section className="session__partiful">
+        <${Partiful} url=${session.partiful} title=${session.title} time=${session.time} place=${session.place} description=${session.description} image=${session.image} />
+      </section>
       <${Island} name="attendees" component=${Attendees} props=${{ date: session.date }} as="section" className="session__attendees" />
       <${Island} name="photos" component=${Photos} props=${{ date: session.date }} as="section" className="session__photos" />
 

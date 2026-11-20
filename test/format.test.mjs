@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plural, ago, linkLabel, githubLogin, profileLink, partifulTime } from '../src/js/format.js';
+import { plural, ago, linkLabel, githubLogin, profileLink, partifulTime, thumb } from '../src/js/format.js';
 import { readout, counterState } from '../src/js/motion-debug.js';
 
 test('plural adds an s except for exactly one', () => {
@@ -31,6 +31,13 @@ test('a Partiful start time reads in the event\'s own timezone, or not at all wi
   assert.equal(partifulTime('2026-11-13T00:00:00.000Z', 'America/New_York'), '7:00 PM');
   assert.equal(partifulTime(null, 'America/New_York'), null);
   assert.equal(partifulTime('2026-11-13T00:00:00.000Z', null), null);
+});
+
+test('a Cloudinary photo gets a resize transform inserted, or passes through untouched', () => {
+  const url = 'https://res.cloudinary.com/demo/image/upload/v1699999999/claudesquad/abc.jpg';
+  assert.equal(thumb(url, 240), 'https://res.cloudinary.com/demo/image/upload/w_240,c_fill,q_auto,f_auto/v1699999999/claudesquad/abc.jpg');
+  assert.equal(thumb('https://example.com/not-cloudinary.jpg', 240), 'https://example.com/not-cloudinary.jpg');
+  assert.equal(thumb(null, 240), null);
 });
 
 test('typed GitHub usernames lose spaces and a leading @', () => {

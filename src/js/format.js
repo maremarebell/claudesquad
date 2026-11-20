@@ -20,6 +20,12 @@ export function partifulTime(start, timezone) {
   return new Date(start).toLocaleTimeString('en-US', { timeZone: timezone, hour: 'numeric', minute: '2-digit' });
 }
 
+// A Cloudinary photo resized for a thumbnail grid, so a phone's full-size
+// upload (up to 6MB) isn't downloaded at full size everywhere it's shown.
+export function thumb(url, width) {
+  return url?.replace('/image/upload/', `/image/upload/w_${width},c_fill,q_auto,f_auto/`) ?? url;
+}
+
 // A link shown without its scheme or trailing slash: github.com/a/b
 export function linkLabel(link) {
   const url = new URL(link);
